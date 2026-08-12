@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .font-serif-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .font-sans-body {
+    font-family: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+  }
+  .font-label-caps {
+    font-family: 'Montserrat', system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+  }
+  .sub-headline {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #888888;
+    font-weight: 700;
+  }
+}
+
+/* Editorial Specific Classes */
+.editorial-bg {
+  background-color: #F9F8F6;
+}
+
+.editorial-card {
+  background-color: #EFECE7;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.editorial-border {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.editorial-dot {
+  width: 8px;
+  height: 8px;
+  background: #1A1A1A;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #EFECE7;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A1A1A;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+/* Fade Up Animation */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hover-gold-glow:hover {
+  box-shadow: 0 0 20px rgba(26, 26, 26, 0.15);
+}
+
+.border-gold-shimmer {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.border-gold-shimmer:hover {
+  border-color: rgba(0, 0, 0, 0.4);
+}
+

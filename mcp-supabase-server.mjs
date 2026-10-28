@@ -375,12 +375,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error(`Herramienta desconocida: ${name}`);
     }
   } catch (error) {
+    const errorMsg =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null
+        ? error.message || JSON.stringify(error)
+        : String(error);
+
     return {
       isError: true,
       content: [
         {
           type: 'text',
-          text: `Error al interactuar con Supabase: ${error instanceof Error ? error.message : String(error)}`,
+          text: `Error al interactuar con Supabase: ${errorMsg}`,
         },
       ],
     };

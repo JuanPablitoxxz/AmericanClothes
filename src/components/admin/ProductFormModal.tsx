@@ -24,6 +24,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [status, setStatus] = useState<ProductStatus>('ACTIVO');
   const [image, setImage] = useState('');
   const [description, setDescription] = useState('');
+  const [sizesStr, setSizesStr] = useState('S, M, L, XL');
+  const [imageUploadMode, setImageUploadMode] = useState<'upload' | 'url'>('upload');
 
   useEffect(() => {
     if (productToEdit) {
@@ -35,6 +37,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setStatus(productToEdit.status);
       setImage(productToEdit.image);
       setDescription(productToEdit.description);
+      setSizesStr(productToEdit.sizes && productToEdit.sizes.length > 0 ? productToEdit.sizes.join(', ') : 'Única');
     } else {
       setName('');
       setSku(`AES-${Math.floor(100 + Math.random() * 900)}`);
@@ -46,11 +49,30 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         'https://lh3.googleusercontent.com/aida-public/AB6AXuDe8JFelISU8TiNUjGi_bscGbRRuZpQiYRbbmzoOXJGdEweGYCQsVwHdSkmR5m0X9qGyvvjN6MOPPCBsB61M1Uscn_4bwQ_XZsK5eKqjyfEZTo3op4zYnD5RRjkzwS35Cp9SwUaJi2lXSYL8Yotxim3wDveH8LLeMT1q3pYSEepnYqECKV766_obVtzw5ToXAI4JHqAHH94pM3_xOG-gb8Z6UzG0z0nfm_jypx5-3YEGCLGdXxdqfPr'
       );
       setDescription('Pieza de edición limitada confeccionada con técnicas artesanales AESTHETE en Colombia.');
+      setSizesStr('S, M, L, XL');
     }
   }, [productToEdit, isOpen]);
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setImage(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedSizes = sizesStr
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     onSaveProduct({
       id: productToEdit ? productToEdit.id : undefined,
       name,
@@ -59,8 +81,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       stock: Number(stock),
       category,
       status,
-      image,
+      image: image || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800',
       description,
+      sizes: parsedSizes.length > 0 ? parsedSizes : ['Única'],
       featured: true,
     });
     onClose();
@@ -165,15 +188,80 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
 
             <div>
-              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">URL de Imagen</label>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Tallas Disponibles (separadas por coma)
+              </label>
               <input
-                type="url"
-                required
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                className="w-full bg-[#EFECE7] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono text-[10px]"
+                type="text"
+                placeholder="ej: S, M, L, XL ó Única"
+                value={sizesStr}
+                onChange={(e) => setSizesStr(e.target.value)}
+                className="w-full bg-[#EFECE7] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
               />
             </div>
+          </div>
+
+          <div className="space-y-2 border border-black/10 p-3 bg-[#EFECE7]/60">
+            <div className="flex justify-between items-center">
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block">
+                Fotografía de la Pieza
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImageUploadMode('upload')}
+                  className={`px-2 py-1 text-[10px] font-label-caps tracking-[1px] transition-colors ${
+                    imageUploadMode === 'upload' ? 'bg-[#1A1A1A] text-white font-bold' : 'bg-black/5 text-[#555]'
+                  }`}
+                >
+                  Subir Archivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageUploadMode('url')}
+                  className={`px-2 py-1 text-[10px] font-label-caps tracking-[1px] transition-colors ${
+                    imageUploadMode === 'url' ? 'bg-[#1A1A1A] text-white font-bold' : 'bg-black/5 text-[#555]'
+                  }`}
+                >
+                  Enlace URL
+                </button>
+              </div>
+            </div>
+
+            {imageUploadMode === 'upload' ? (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="w-full text-xs text-[#1A1A1A] file:mr-3 file:py-2 file:px-4 file:border-0 file:text-[10px] file:font-label-caps file:font-bold file:tracking-[1px] file:bg-[#1A1A1A] file:text-[#F9F8F6] hover:file:bg-[#333] cursor-pointer"
+                />
+              </div>
+            ) : (
+              <input
+                type="url"
+                placeholder="https://ejemplo.com/foto.jpg"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono text-[10px]"
+              />
+            )}
+
+            {image && (
+              <div className="flex items-center justify-between p-2 bg-[#F9F8F6] border border-black/10 mt-2">
+                <div className="flex items-center gap-3">
+                  <img src={image} alt="Preview" className="w-12 h-14 object-cover bg-[#D6D2CC]" />
+                  <span className="text-[10px] text-[#555555] font-mono">Vista previa cargada</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImage('')}
+                  className="text-xs text-red-600 hover:underline px-2 py-1"
+                >
+                  Quitar imagen
+                </button>
+              </div>
+            )}
           </div>
 
           <div>

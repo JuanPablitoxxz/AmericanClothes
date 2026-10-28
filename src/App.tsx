@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppMode, AdminTab, Product, Order, CartItem, OrderStatus, ProductCategory } from './types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS } from './data/mockData';
+import { isSupabaseConfigured } from './lib/supabase';
+import {
+  createOrder,
+  deleteProduct,
+  fetchOrders,
+  saveProduct,
+  seedProductsIfEmpty,
+  updateOrderStatus,
+  updateProductStatus,
+  updateProductStock,
+} from './lib/storeData';
 import { LiquidGoldShader } from './components/LiquidGoldShader';
 import { TopBarSwitch } from './components/TopBarSwitch';
 
@@ -23,14 +34,61 @@ import { OrderManagement } from './components/admin/OrderManagement';
 import { SettingsPanel } from './components/admin/SettingsPanel';
 import { ProductFormModal } from './components/admin/ProductFormModal';
 
+const STORAGE_KEYS = {
+  PRODUCTS: 'negrocirck_products_v1',
+  ORDERS: 'negrocirck_orders_v1',
+  CART: 'negrocirck_cart_v1',
+  SETTINGS: 'negrocirck_settings_v1',
+};
+
+const getInitialProducts = (): Product[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error al leer productos de localStorage:', e);
+  }
+  return INITIAL_PRODUCTS;
+};
+
+const getInitialOrders = (): Order[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error('Error al leer pedidos de localStorage:', e);
+  }
+  return INITIAL_ORDERS;
+};
+
+const getInitialCart = (): CartItem[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CART);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('Error al leer carrito de localStorage:', e);
+  }
+  return [];
+};
+
 export default function App() {
   const [mode, setMode] = useState<AppMode>('store');
   const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
 
-  // Shared Application State
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Shared Application State with LocalStorage
+  const [products, setProducts] = useState<Product[]>(getInitialProducts);
+  const [orders, setOrders] = useState<Order[]>(getInitialOrders);
+  const [cart, setCart] = useState<CartItem[]>(getInitialCart);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   // UI States
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -40,12 +98,104 @@ export default function App() {
   const [isProductFormOpen, setIsProductFormOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // Settings
-  const [shaderOpacity, setShaderOpacity] = useState<number>(0.3);
-  const [currency, setCurrency] = useState<string>('COP');
-  const [announcementText, setAnnouncementText] = useState<string>(
-    'Envíos gratis a Colombia por compras superiores a $350.000 COP'
-  );
+  // Settings with LocalStorage
+  const [shaderOpacity, setShaderOpacity] = useState<number>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).shaderOpacity ?? 0.3;
+    } catch {}
+    return 0.3;
+  });
+
+  const [currency, setCurrency] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).currency ?? 'COP';
+    } catch {}
+    return 'COP';
+  });
+
+  const [announcementText, setAnnouncementText] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).announcementText ?? 'Envíos gratis a Colombia por compras superiores a $350.000 COP';
+    } catch {}
+    return 'Envíos gratis a Colombia por compras superiores a $350.000 COP';
+  });
+
+  const [whatsappNumber, setWhatsappNumber] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).whatsappNumber ?? '573001234567';
+    } catch {}
+    return '573001234567';
+  });
+
+  // Persist state to localStorage
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    }
+  }, [products]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEYS.SETTINGS,
+      JSON.stringify({ shaderOpacity, currency, announcementText, whatsappNumber })
+    );
+  }, [shaderOpacity, currency, announcementText, whatsappNumber]);
+
+  const handleResetToDemoData = () => {
+    if (window.confirm('¿Desea restaurar todos los productos y pedidos a los valores de prueba originales?')) {
+      localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
+      localStorage.removeItem(STORAGE_KEYS.ORDERS);
+      localStorage.removeItem(STORAGE_KEYS.CART);
+      setProducts(INITIAL_PRODUCTS);
+      setOrders(INITIAL_ORDERS);
+      setCart([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isMounted = true;
+
+    const loadStoreData = async () => {
+      try {
+        const [remoteProducts, remoteOrders] = await Promise.all([
+          seedProductsIfEmpty(INITIAL_PRODUCTS),
+          fetchOrders(),
+        ]);
+
+        if (!isMounted) return;
+        setProducts(remoteProducts);
+        setOrders(remoteOrders.length > 0 ? remoteOrders : INITIAL_ORDERS);
+        setDataError(null);
+      } catch (error) {
+        console.error('No fue posible cargar datos desde Supabase:', error);
+        if (isMounted) {
+          setDataError('No fue posible conectar con Supabase. Se están usando datos locales.');
+        }
+      }
+    };
+
+    loadStoreData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Cart operations
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -82,8 +232,8 @@ export default function App() {
     setCart((prev) => prev.filter((i) => !(i.product.id === productId && i.selectedSize === size)));
   };
 
-  const handleCheckout = (customerInfo: { name: string; email: string; address: string }) => {
-    if (cart.length === 0) return;
+  const handleCheckout = async (customerInfo: { name: string; email: string; address: string; phone?: string }): Promise<string> => {
+    if (cart.length === 0) return '';
 
     const newOrderId = `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
     const newTotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
@@ -92,6 +242,7 @@ export default function App() {
       id: newOrderId,
       customerName: customerInfo.name,
       email: customerInfo.email,
+      phone: customerInfo.phone,
       timeAgo: 'Hace un momento',
       date: new Date().toISOString().replace('T', ' ').substring(0, 16),
       total: newTotal,
@@ -107,67 +258,133 @@ export default function App() {
       })),
     };
 
-    // Deduct stock
-    setProducts((prev) =>
-      prev.map((p) => {
-        const cartMatch = cart.find((c) => c.product.id === p.id);
-        if (cartMatch) {
-          const newStock = Math.max(0, p.stock - cartMatch.quantity);
-          return {
-            ...p,
-            stock: newStock,
-            status: newStock <= 5 ? 'STOCK BAJO' : p.status,
-          };
-        }
-        return p;
-      })
-    );
+    try {
+      if (isSupabaseConfigured) {
+        await createOrder(newOrder);
+      }
 
-    setOrders((prev) => [newOrder, ...prev]);
-    setCart([]);
+      const nextProducts = products.map((p) => {
+        const cartMatch = cart.find((c) => c.product.id === p.id);
+        if (!cartMatch) return p;
+
+        const newStock = Math.max(0, p.stock - cartMatch.quantity);
+        return {
+          ...p,
+          stock: newStock,
+          status: newStock <= 5 ? ('STOCK BAJO' as const) : p.status,
+        };
+      });
+
+      if (isSupabaseConfigured) {
+        await Promise.all(
+          nextProducts
+            .filter((product) => cart.some((item) => item.product.id === product.id))
+            .map((product) => updateProductStock(product.id, product.stock, product.status))
+        );
+      }
+
+      setProducts(nextProducts);
+      setOrders((prev) => [newOrder, ...prev]);
+      setCart([]);
+      setDataError(null);
+      return newOrderId;
+    } catch (error) {
+      console.error('No fue posible registrar el pedido:', error);
+      setDataError('No fue posible registrar el pedido. Intenta de nuevo.');
+      return newOrderId;
+    }
   };
 
   // Product Management Handlers
-  const handleSaveProduct = (productData: Omit<Product, 'id'> & { id?: string }) => {
-    if (productData.id) {
-      // Edit
-      setProducts((prev) =>
-        prev.map((p) => (p.id === productData.id ? ({ ...p, ...productData } as Product) : p))
-      );
-    } else {
-      // Create
-      const newProduct: Product = {
-        ...productData,
-        id: String(Date.now()),
-        sku: productData.sku || `AES-${Math.floor(100 + Math.random() * 900)}`,
-      };
-      setProducts((prev) => [newProduct, ...prev]);
+  const handleSaveProduct = async (productData: Omit<Product, 'id'> & { id?: string }) => {
+    try {
+      if (isSupabaseConfigured) {
+        const savedProduct = await saveProduct(productData);
+        setProducts((prev) =>
+          productData.id
+            ? prev.map((p) => (p.id === savedProduct.id ? savedProduct : p))
+            : [savedProduct, ...prev]
+        );
+      } else if (productData.id) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productData.id ? ({ ...p, ...productData } as Product) : p))
+        );
+      } else {
+        const newProduct: Product = {
+          ...productData,
+          id: String(Date.now()),
+          sku: productData.sku || `AES-${Math.floor(100 + Math.random() * 900)}`,
+        };
+        setProducts((prev) => [newProduct, ...prev]);
+      }
+
+      setDataError(null);
+    } catch (error) {
+      console.error('No fue posible guardar el producto en Supabase:', error);
+      setDataError('No fue posible guardar el producto en Supabase.');
     }
   };
 
-  const handleDeleteProduct = (productId: string) => {
-    if (window.confirm('¿Está seguro de eliminar esta pieza del catálogo?')) {
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('¿Está seguro de eliminar esta pieza del catálogo?')) return;
+
+    try {
+      if (isSupabaseConfigured) {
+        await deleteProduct(productId);
+      }
+
       setProducts((prev) => prev.filter((p) => p.id !== productId));
+      setDataError(null);
+    } catch (error) {
+      console.error('No fue posible eliminar el producto en Supabase:', error);
+      setDataError('No fue posible eliminar el producto en Supabase.');
     }
   };
 
-  const handleToggleProductStatus = (productId: string) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === productId) {
-          const nextStatus: Product['status'] =
-            p.status === 'ACTIVO' ? 'PAUSADO' : p.status === 'PAUSADO' ? 'ACTIVO' : 'ACTIVO';
-          return { ...p, status: nextStatus };
-        }
-        return p;
-      })
-    );
+  const handleToggleProductStatus = async (productId: string) => {
+    const currentProduct = products.find((p) => p.id === productId);
+    if (!currentProduct) return;
+
+    const nextStatus: Product['status'] =
+      currentProduct.status === 'ACTIVO'
+        ? 'PAUSADO'
+        : currentProduct.status === 'PAUSADO'
+        ? 'ACTIVO'
+        : 'ACTIVO';
+
+    try {
+      if (isSupabaseConfigured) {
+        const updatedProduct = await updateProductStatus(productId, nextStatus);
+        setProducts((prev) => prev.map((p) => (p.id === productId ? updatedProduct : p)));
+      } else {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, status: nextStatus } : p))
+        );
+      }
+
+      setDataError(null);
+    } catch (error) {
+      console.error('No fue posible actualizar el producto en Supabase:', error);
+      setDataError('No fue posible actualizar el producto en Supabase.');
+    }
   };
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-    );
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      if (isSupabaseConfigured) {
+        const updatedOrder = await updateOrderStatus(orderId, newStatus);
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? updatedOrder : o)));
+      } else {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+        );
+      }
+
+      setDataError(null);
+    } catch (error) {
+      console.error('No fue posible actualizar el pedido en Supabase:', error);
+      setDataError('No fue posible actualizar el pedido en Supabase.');
+    }
   };
 
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
@@ -176,6 +393,12 @@ export default function App() {
     <div className="min-h-screen bg-[#131313] text-[#e4e2e1] font-sans-body relative overflow-x-hidden selection:bg-[#e9c349] selection:text-[#131313]">
       {/* Animated Liquid Gold Shader Canvas Background */}
       <LiquidGoldShader opacity={shaderOpacity} />
+
+      {dataError && (
+        <div className="fixed left-4 bottom-4 z-[60] max-w-sm bg-red-950/95 text-white border border-red-400/30 px-4 py-3 text-xs shadow-2xl">
+          {dataError}
+        </div>
+      )}
 
       {/* Top Bar Switcher between Store & Admin */}
       <TopBarSwitch
@@ -273,6 +496,7 @@ export default function App() {
             onUpdateQuantity={handleUpdateCartQty}
             onRemoveItem={handleRemoveFromCart}
             onCheckout={handleCheckout}
+            whatsappNumber={whatsappNumber}
           />
         </div>
       ) : (
@@ -342,6 +566,10 @@ export default function App() {
                 setCurrency={setCurrency}
                 announcementText={announcementText}
                 setAnnouncementText={setAnnouncementText}
+                whatsappNumber={whatsappNumber}
+                setWhatsappNumber={setWhatsappNumber}
+                isSupabaseConfigured={isSupabaseConfigured}
+                onResetDemoData={handleResetToDemoData}
               />
             )}
           </main>

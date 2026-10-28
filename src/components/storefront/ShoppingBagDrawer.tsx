@@ -8,7 +8,8 @@ interface ShoppingBagDrawerProps {
   cartItems: CartItem[];
   onUpdateQuantity: (productId: string, size: string, newQty: number) => void;
   onRemoveItem: (productId: string, size: string) => void;
-  onCheckout: (customerInfo: { name: string; email: string; address: string }) => void;
+  onCheckout: (customerInfo: { name: string; email: string; address: string; phone?: string }) => Promise<string> | string | void;
+  whatsappNumber?: string;
 }
 
 export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
@@ -18,15 +19,26 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
+  whatsappNumber = '573001234567',
 }) => {
   if (!isOpen) return null;
 
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'success'>('cart');
   const [customerName, setCustomerName] = useState('Camila Rodríguez');
   const [customerEmail, setCustomerEmail] = useState('camila.rodriguez@email.com');
+  const [customerPhone, setCustomerPhone] = useState('310 123 4567');
   const [shippingAddress, setShippingAddress] = useState('Calle 85 #11-53, Bogotá, Colombia');
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+    address: string;
+    items: CartItem[];
+    total: number;
+  } | null>(null);
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
   const total = Math.max(0, subtotal - discount);
@@ -39,12 +51,26 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
     }
   };
 
-  const handleCompleteOrder = (e: React.FormEvent) => {
+  const handleCompleteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    onCheckout({
+    const itemsSnapshot = [...cartItems];
+    const orderTotal = total;
+    const generatedId = await onCheckout({
       name: customerName,
       email: customerEmail,
       address: shippingAddress,
+      phone: customerPhone,
+    });
+
+    const safeId = typeof generatedId === 'string' && generatedId ? generatedId : `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
+
+    setConfirmedOrder({
+      id: safeId,
+      name: customerName,
+      phone: customerPhone,
+      address: shippingAddress,
+      items: itemsSnapshot,
+      total: orderTotal,
     });
     setCheckoutStep('success');
   };
@@ -72,28 +98,85 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
         </div>
 
         {/* Content Area */}
-        {checkoutStep === 'success' ? (
-          <div className="p-8 flex-1 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 bg-[#1A1A1A] text-[#F9F8F6] rounded-full flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl">check_circle</span>
+        {checkoutStep === 'success' && confirmedOrder ? (
+          <div className="p-6 flex-1 flex flex-col justify-between overflow-y-auto space-y-4">
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 bg-[#1A1A1A] text-[#F9F8F6] rounded-full mx-auto flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl">check_circle</span>
+              </div>
+              <span className="sub-headline block">PEDIDO CONFIRMADO</span>
+              <h3 className="font-serif-display text-2xl font-normal text-[#1A1A1A]">
+                {confirmedOrder.id}
+              </h3>
+              <p className="text-xs text-[#555555] leading-relaxed">
+                ¡Gracias <strong>{confirmedOrder.name}</strong>! Su compra ha sido registrada en el sistema y guardada en el panel administrativo.
+              </p>
             </div>
-            <h3 className="font-serif-display text-2xl font-normal text-[#1A1A1A]">¡Gracias por su pedido!</h3>
-            <p className="text-xs text-[#555555] leading-relaxed">
-              Su compra ha sido registrada con éxito. Hemos enviado la confirmación y el seguimiento nacional a <strong>{customerEmail}</strong>.
-            </p>
-            <div className="p-4 bg-[#EFECE7] border border-black/10 w-full text-left text-xs font-mono space-y-1">
-              <p className="text-[#1A1A1A] font-bold">Estado: Registrado en Admin Dashboard</p>
-              <p className="text-[#888888]">Envío: Prioritario asegurado en Colombia</p>
+
+            <div className="p-4 bg-[#EFECE7] border border-black/10 text-xs space-y-2">
+              <div className="flex justify-between font-bold text-[#1A1A1A] border-b border-black/10 pb-1.5">
+                <span>Resumen del Pedido</span>
+                <span>{formatCOP(confirmedOrder.total)}</span>
+              </div>
+              <div className="max-h-36 overflow-y-auto space-y-1 pr-1 font-mono text-[11px]">
+                {confirmedOrder.items.map((i, idx) => (
+                  <div key={idx} className="flex justify-between text-[#555555]">
+                    <span className="truncate max-w-[200px]">
+                      {i.quantity}x {i.product.name} ({i.selectedSize})
+                    </span>
+                    <span>{formatCOP(i.product.price * i.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-black/10 text-[10px] text-[#777] space-y-0.5">
+                <p>📍 Entrega: {confirmedOrder.address}</p>
+                <p>📞 Contacto: {confirmedOrder.phone}</p>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                setCheckoutStep('cart');
-                onClose();
-              }}
-              className="mt-4 w-full py-3 bg-[#1A1A1A] text-[#F9F8F6] font-label-caps text-xs font-bold uppercase tracking-[2px]"
-            >
-              Volver a la Tienda
-            </button>
+
+            <div className="space-y-2 pt-2">
+              <a
+                href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(
+                  `*NUEVO PEDIDO AESTHETE / NEGRO*\n\n` +
+                  `*Orden:* ${confirmedOrder.id}\n` +
+                  `*Cliente:* ${confirmedOrder.name}\n` +
+                  `*Teléfono:* ${confirmedOrder.phone}\n` +
+                  `*Dirección:* ${confirmedOrder.address}\n\n` +
+                  `*Productos:*\n` +
+                  confirmedOrder.items.map((i) => `• ${i.product.name} (Talla: ${i.selectedSize}, Cant: ${i.quantity}) - ${formatCOP(i.product.price * i.quantity)}`).join('\n') +
+                  `\n\n*Total a Pagar:* ${formatCOP(confirmedOrder.total)}`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 bg-[#25D366] text-white font-label-caps text-xs font-bold uppercase tracking-[2px] flex items-center justify-center gap-2 hover:bg-[#20ba5a] transition-colors shadow-sm"
+              >
+                <span>📲 Notificar pedido por WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const summaryText = `PEDIDO ${confirmedOrder.id}\nCliente: ${confirmedOrder.name}\nTotal: ${formatCOP(confirmedOrder.total)}\nDirección: ${confirmedOrder.address}`;
+                  navigator.clipboard.writeText(summaryText);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="w-full py-2.5 bg-[#EFECE7] border border-black/10 text-xs font-label-caps text-[#1A1A1A] tracking-[1px] hover:bg-[#e4e0d9]"
+              >
+                {copied ? '✓ Copiado al portapapeles' : 'Copiar datos del pedido'}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCheckoutStep('cart');
+                  setConfirmedOrder(null);
+                  onClose();
+                }}
+                className="w-full py-3 bg-[#1A1A1A] text-[#F9F8F6] font-label-caps text-xs font-bold uppercase tracking-[2px] hover:bg-[#333333]"
+              >
+                Volver a la Tienda
+              </button>
+            </div>
           </div>
         ) : checkoutStep === 'shipping' ? (
           <form onSubmit={handleCompleteOrder} className="p-6 flex-1 overflow-y-auto space-y-4">
@@ -124,7 +207,21 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
             </div>
 
             <div>
-              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">Dirección de Envío</label>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Teléfono / WhatsApp (para entrega)
+              </label>
+              <input
+                type="tel"
+                required
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="ej: 310 123 4567"
+                className="w-full bg-[#EFECE7] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">Dirección de Envío y Ciudad</label>
               <textarea
                 required
                 rows={3}

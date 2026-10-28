@@ -1,6 +1,6 @@
 {
-  "name": "AESTHETE Luxury Fashion",
-  "description": "High-fashion luxury storefront and management dashboard with liquid gold ambient background, product catalog, orders, and real-time inventory control.",
+  "name": "Negrocirck",
+  "description": "Negro crick",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -37,6 +37,7 @@ export interface Order {
   status: OrderStatus;
   items: OrderItem[];
   shippingAddress?: string;
+  phone?: string;
 }
 
 export interface CartItem {

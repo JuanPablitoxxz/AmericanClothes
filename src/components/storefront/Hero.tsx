@@ -19,9 +19,9 @@ export const Hero: React.FC<HeroProps> = ({ onExplore }) => {
             Una exploración de la alta costura brutalista y la sastrería contemporánea hecha para Colombia. Encontrando armonía en la colisión de texturas orgánicas y geometría arquitectónica.
           </p>
           
-          <div className="cta-button" onClick={onExplore}>
-            <div className="dot"></div>
-            <span className="text-[11px] uppercase tracking-[4px] font-bold text-[#1A1A1A] hover:opacity-70 transition-opacity">
+          <div className="cursor-pointer inline-flex items-center gap-3 group mt-2" onClick={onExplore}>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#1A1A1A] group-hover:scale-125 transition-transform"></div>
+            <span className="text-[11px] uppercase tracking-[4px] font-bold text-[#1A1A1A] group-hover:opacity-70 transition-opacity">
               Explorar Colección
             </span>
           </div>

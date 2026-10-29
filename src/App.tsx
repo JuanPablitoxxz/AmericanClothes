@@ -28,6 +28,7 @@ import {
   getOrderReservationStatus,
   LOW_STOCK_THRESHOLD,
   saveProduct,
+  StoreSettings,
   updateOrderStatus,
   updateProductStatus,
   updateProductStock,
@@ -149,24 +150,39 @@ export default function App() {
 
   const [whatsappNumber, setWhatsappNumber] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_whatsapp_number_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).whatsappNumber ?? '573001234567';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.whatsappNumber && parsed.whatsappNumber.trim()) return parsed.whatsappNumber.trim();
+      }
     } catch {}
-    return '573001234567';
+    return '+57 322 4127814';
   });
 
   const [whatsappApiKey, setWhatsappApiKey] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_whatsapp_apikey_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).whatsappApiKey ?? '';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.whatsappApiKey && parsed.whatsappApiKey.trim()) return parsed.whatsappApiKey.trim();
+      }
     } catch {}
     return '';
   });
 
   const [whatsappWebhookUrl, setWhatsappWebhookUrl] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_whatsapp_webhook_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).whatsappWebhookUrl ?? '';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.whatsappWebhookUrl && parsed.whatsappWebhookUrl.trim()) return parsed.whatsappWebhookUrl.trim();
+      }
     } catch {}
     return '';
   });
@@ -205,17 +221,45 @@ export default function App() {
     return '';
   });
 
-  // Mantener siempre respaldado en LocalStorage dedicado para máxima persistencia en recargas F5
+  // Mantener respaldados en LocalStorage dedicado para máxima persistencia en recargas F5
   useEffect(() => {
-    if (telegramBotToken && telegramBotToken.trim()) {
-      localStorage.setItem('american_clothes_telegram_bot_token_v1', telegramBotToken.trim());
-    }
+    try {
+      if (whatsappNumber && whatsappNumber.trim()) {
+        localStorage.setItem('american_clothes_whatsapp_number_v1', whatsappNumber.trim());
+      }
+    } catch {}
+  }, [whatsappNumber]);
+
+  useEffect(() => {
+    try {
+      if (whatsappApiKey !== undefined) {
+        localStorage.setItem('american_clothes_whatsapp_apikey_v1', whatsappApiKey.trim());
+      }
+    } catch {}
+  }, [whatsappApiKey]);
+
+  useEffect(() => {
+    try {
+      if (whatsappWebhookUrl !== undefined) {
+        localStorage.setItem('american_clothes_whatsapp_webhook_v1', whatsappWebhookUrl.trim());
+      }
+    } catch {}
+  }, [whatsappWebhookUrl]);
+
+  useEffect(() => {
+    try {
+      if (telegramBotToken && telegramBotToken.trim()) {
+        localStorage.setItem('american_clothes_telegram_bot_token_v1', telegramBotToken.trim());
+      }
+    } catch {}
   }, [telegramBotToken]);
 
   useEffect(() => {
-    if (telegramChatId && telegramChatId.trim()) {
-      localStorage.setItem('american_clothes_telegram_chat_id_v1', telegramChatId.trim());
-    }
+    try {
+      if (telegramChatId && telegramChatId.trim()) {
+        localStorage.setItem('american_clothes_telegram_chat_id_v1', telegramChatId.trim());
+      }
+    } catch {}
   }, [telegramChatId]);
 
   const [autoNotifyTelegram, setAutoNotifyTelegram] = useState<boolean>(() => {
@@ -226,38 +270,91 @@ export default function App() {
     return true;
   });
 
-  // Medios de Pago (Nequi, Daviplata, Llave Bre-B, QR)
+  // Medios de Pago Blindados (Nequi, Daviplata, Llave Bre-B, QR)
   const [nequiNumber, setNequiNumber] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_nequi_number_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).nequiNumber ?? '3224127814';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.nequiNumber && parsed.nequiNumber.trim()) return parsed.nequiNumber.trim();
+      }
     } catch {}
     return '3224127814';
   });
 
   const [daviplataNumber, setDaviplataNumber] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_daviplata_number_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).daviplataNumber ?? '3224127814';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.daviplataNumber && parsed.daviplataNumber.trim()) return parsed.daviplataNumber.trim();
+      }
     } catch {}
     return '3224127814';
   });
 
   const [breBKey, setBreBKey] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_bre_b_key_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).breBKey ?? '3224127814';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.breBKey && parsed.breBKey.trim()) return parsed.breBKey.trim();
+      }
     } catch {}
     return '3224127814';
   });
 
   const [paymentQrImage, setPaymentQrImage] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_payment_qr_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).paymentQrImage ?? '';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.paymentQrImage && parsed.paymentQrImage.trim()) return parsed.paymentQrImage.trim();
+      }
     } catch {}
     return '';
   });
+
+  // Persistencia dedicada para llaves de pago y código QR
+  useEffect(() => {
+    try {
+      if (nequiNumber && nequiNumber.trim()) {
+        localStorage.setItem('american_clothes_nequi_number_v1', nequiNumber.trim());
+      }
+    } catch {}
+  }, [nequiNumber]);
+
+  useEffect(() => {
+    try {
+      if (daviplataNumber && daviplataNumber.trim()) {
+        localStorage.setItem('american_clothes_daviplata_number_v1', daviplataNumber.trim());
+      }
+    } catch {}
+  }, [daviplataNumber]);
+
+  useEffect(() => {
+    try {
+      if (breBKey && breBKey.trim()) {
+        localStorage.setItem('american_clothes_bre_b_key_v1', breBKey.trim());
+      }
+    } catch {}
+  }, [breBKey]);
+
+  useEffect(() => {
+    try {
+      if (paymentQrImage && paymentQrImage.trim()) {
+        localStorage.setItem('american_clothes_payment_qr_v1', paymentQrImage.trim());
+      }
+    } catch {}
+  }, [paymentQrImage]);
 
   // Usuarios registrados en la plataforma
   const [registeredUsers, setRegisteredUsers] = useState<StoredUserAccount[]>([]);
@@ -351,55 +448,133 @@ export default function App() {
     paymentQrImage,
   ]);
 
+  const applyRemoteSettings = (remoteSettings: StoreSettings) => {
+    if (!remoteSettings) return;
+
+    if (remoteSettings.shaderOpacity !== undefined) setShaderOpacity(remoteSettings.shaderOpacity);
+    if (remoteSettings.currency) setCurrency(remoteSettings.currency);
+    if (remoteSettings.announcementText) setAnnouncementText(remoteSettings.announcementText);
+
+    // WhatsApp blindado
+    const localWhatsapp = localStorage.getItem('american_clothes_whatsapp_number_v1') || '';
+    if (remoteSettings.whatsappNumber && remoteSettings.whatsappNumber.trim()) {
+      setWhatsappNumber(remoteSettings.whatsappNumber.trim());
+      localStorage.setItem('american_clothes_whatsapp_number_v1', remoteSettings.whatsappNumber.trim());
+    } else if (localWhatsapp.trim()) {
+      setWhatsappNumber(localWhatsapp.trim());
+    }
+
+    const localWhatsappApiKey = localStorage.getItem('american_clothes_whatsapp_apikey_v1') || '';
+    if (remoteSettings.whatsappApiKey && remoteSettings.whatsappApiKey.trim()) {
+      setWhatsappApiKey(remoteSettings.whatsappApiKey.trim());
+      localStorage.setItem('american_clothes_whatsapp_apikey_v1', remoteSettings.whatsappApiKey.trim());
+    } else if (localWhatsappApiKey.trim()) {
+      setWhatsappApiKey(localWhatsappApiKey.trim());
+    }
+
+    const localWhatsappWebhook = localStorage.getItem('american_clothes_whatsapp_webhook_v1') || '';
+    if (remoteSettings.whatsappWebhookUrl && remoteSettings.whatsappWebhookUrl.trim()) {
+      setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl.trim());
+      localStorage.setItem('american_clothes_whatsapp_webhook_v1', remoteSettings.whatsappWebhookUrl.trim());
+    } else if (localWhatsappWebhook.trim()) {
+      setWhatsappWebhookUrl(localWhatsappWebhook.trim());
+    }
+
+    if (remoteSettings.autoNotifyAdmin !== undefined) {
+      setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
+    }
+
+    // Telegram blindado
+    const localDirectToken = localStorage.getItem('american_clothes_telegram_bot_token_v1') || '';
+    const localDirectChat = localStorage.getItem('american_clothes_telegram_chat_id_v1') || '';
+
+    if (remoteSettings.telegramBotToken && remoteSettings.telegramBotToken.trim()) {
+      setTelegramBotToken(remoteSettings.telegramBotToken.trim());
+      localStorage.setItem('american_clothes_telegram_bot_token_v1', remoteSettings.telegramBotToken.trim());
+    } else if (localDirectToken.trim()) {
+      setTelegramBotToken(localDirectToken.trim());
+    }
+
+    if (remoteSettings.telegramChatId && remoteSettings.telegramChatId.trim()) {
+      setTelegramChatId(remoteSettings.telegramChatId.trim());
+      localStorage.setItem('american_clothes_telegram_chat_id_v1', remoteSettings.telegramChatId.trim());
+    } else if (localDirectChat.trim()) {
+      setTelegramChatId(localDirectChat.trim());
+    }
+
+    if (remoteSettings.autoNotifyTelegram !== undefined) {
+      setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
+    }
+
+    // Blindaje de Medios de Pago (Nequi, Daviplata, Bre-B): NUNCA sobreescribir con vacío
+    const localNequi = localStorage.getItem('american_clothes_nequi_number_v1') || '';
+    if (remoteSettings.nequiNumber && remoteSettings.nequiNumber.trim()) {
+      setNequiNumber(remoteSettings.nequiNumber.trim());
+      localStorage.setItem('american_clothes_nequi_number_v1', remoteSettings.nequiNumber.trim());
+    } else if (localNequi.trim()) {
+      setNequiNumber(localNequi.trim());
+    }
+
+    const localDaviplata = localStorage.getItem('american_clothes_daviplata_number_v1') || '';
+    if (remoteSettings.daviplataNumber && remoteSettings.daviplataNumber.trim()) {
+      setDaviplataNumber(remoteSettings.daviplataNumber.trim());
+      localStorage.setItem('american_clothes_daviplata_number_v1', remoteSettings.daviplataNumber.trim());
+    } else if (localDaviplata.trim()) {
+      setDaviplataNumber(localDaviplata.trim());
+    }
+
+    const localBreB = localStorage.getItem('american_clothes_bre_b_key_v1') || '';
+    if (remoteSettings.breBKey && remoteSettings.breBKey.trim()) {
+      setBreBKey(remoteSettings.breBKey.trim());
+      localStorage.setItem('american_clothes_bre_b_key_v1', remoteSettings.breBKey.trim());
+    } else if (localBreB.trim()) {
+      setBreBKey(localBreB.trim());
+    }
+
+    // Blindaje del Código QR de Llave Breve: NUNCA borrar con vacío si existe localmente
+    const localQr = localStorage.getItem('american_clothes_payment_qr_v1') || '';
+    if (remoteSettings.paymentQrImage && remoteSettings.paymentQrImage.trim()) {
+      setPaymentQrImage(remoteSettings.paymentQrImage.trim());
+      localStorage.setItem('american_clothes_payment_qr_v1', remoteSettings.paymentQrImage.trim());
+    } else if (localQr.trim()) {
+      setPaymentQrImage(localQr.trim());
+    }
+  };
+
   const handleSyncDatabase = async () => {
     try {
       if (!isSupabaseConfigured) return;
-      const [remoteProducts, remoteOrders, remoteSettings] = await Promise.all([
+      const results = await Promise.allSettled([
         fetchProducts(),
         fetchOrders(),
         fetchCloudSettings(),
       ]);
-      setProducts(remoteProducts);
-      setOrders(remoteOrders);
-      if (remoteSettings) {
-        setShaderOpacity(remoteSettings.shaderOpacity);
-        setCurrency(remoteSettings.currency);
-        setAnnouncementText(remoteSettings.announcementText);
-        setWhatsappNumber(remoteSettings.whatsappNumber);
-        if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
-        if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
-        if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
-        
-        // Sincronización robusta de Telegram: NUNCA borrar con vacío si existe localmente
-        const localDirectToken = localStorage.getItem('american_clothes_telegram_bot_token_v1') || '';
-        const localDirectChat = localStorage.getItem('american_clothes_telegram_chat_id_v1') || '';
 
-        if (remoteSettings.telegramBotToken && remoteSettings.telegramBotToken.trim()) {
-          setTelegramBotToken(remoteSettings.telegramBotToken.trim());
-          localStorage.setItem('american_clothes_telegram_bot_token_v1', remoteSettings.telegramBotToken.trim());
-        } else if (localDirectToken.trim()) {
-          saveCloudSettings({
-            ...remoteSettings,
-            telegramBotToken: localDirectToken.trim(),
-            telegramChatId: localDirectChat.trim() || remoteSettings.telegramChatId || '',
-          }).catch(() => {});
-        }
+      const [prodRes, ordRes, setRes] = results;
 
-        if (remoteSettings.telegramChatId && remoteSettings.telegramChatId.trim()) {
-          setTelegramChatId(remoteSettings.telegramChatId.trim());
-          localStorage.setItem('american_clothes_telegram_chat_id_v1', remoteSettings.telegramChatId.trim());
-        } else if (localDirectChat.trim()) {
-          setTelegramChatId(localDirectChat.trim());
-        }
-
-        if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
-        if (remoteSettings.nequiNumber !== undefined) setNequiNumber(remoteSettings.nequiNumber);
-        if (remoteSettings.daviplataNumber !== undefined) setDaviplataNumber(remoteSettings.daviplataNumber);
-        if (remoteSettings.breBKey !== undefined) setBreBKey(remoteSettings.breBKey);
-        if (remoteSettings.paymentQrImage !== undefined) setPaymentQrImage(remoteSettings.paymentQrImage);
+      if (prodRes.status === 'fulfilled') {
+        setProducts(prodRes.value);
+      } else {
+        console.warn('Aviso al sincronizar productos de Supabase:', prodRes.reason);
       }
+
+      if (ordRes.status === 'fulfilled') {
+        setOrders(ordRes.value);
+      } else {
+        console.warn('Aviso al sincronizar órdenes de Supabase:', ordRes.reason);
+      }
+
+      if (setRes.status === 'fulfilled' && setRes.value) {
+        applyRemoteSettings(setRes.value);
+      }
+
       await loadRegisteredUsers();
-      setDataError(null);
+
+      if (prodRes.status === 'rejected' && ordRes.status === 'rejected') {
+        setDataError('No fue posible sincronizar con Supabase.');
+      } else {
+        setDataError(null);
+      }
     } catch (error) {
       console.error('Error al sincronizar desde Supabase:', error);
       setDataError('No fue posible sincronizar con Supabase.');
@@ -419,57 +594,38 @@ export default function App() {
       try {
         if (!isSupabaseConfigured) return;
 
-        const [remoteProducts, remoteOrders, remoteSettings] = await Promise.all([
+        const results = await Promise.allSettled([
           fetchProducts(),
           fetchOrders(),
           fetchCloudSettings(),
         ]);
 
         if (!isMounted) return;
-        setProducts(remoteProducts);
-        setOrders(remoteOrders);
+        const [prodRes, ordRes, setRes] = results;
 
-        if (remoteSettings) {
-          setShaderOpacity(remoteSettings.shaderOpacity);
-          setCurrency(remoteSettings.currency);
-          setAnnouncementText(remoteSettings.announcementText);
-          setWhatsappNumber(remoteSettings.whatsappNumber);
-          if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
-          if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
-          if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
-          
-          // Sincronización robusta de Telegram: NUNCA borrar con vacío si existe localmente
-          const localDirectToken = localStorage.getItem('american_clothes_telegram_bot_token_v1') || '';
-          const localDirectChat = localStorage.getItem('american_clothes_telegram_chat_id_v1') || '';
+        if (prodRes.status === 'fulfilled') {
+          setProducts(prodRes.value);
+        } else {
+          console.warn('Aviso al cargar productos de Supabase:', prodRes.reason);
+        }
 
-          if (remoteSettings.telegramBotToken && remoteSettings.telegramBotToken.trim()) {
-            setTelegramBotToken(remoteSettings.telegramBotToken.trim());
-            localStorage.setItem('american_clothes_telegram_bot_token_v1', remoteSettings.telegramBotToken.trim());
-          } else if (localDirectToken.trim()) {
-            saveCloudSettings({
-              ...remoteSettings,
-              telegramBotToken: localDirectToken.trim(),
-              telegramChatId: localDirectChat.trim() || remoteSettings.telegramChatId || '',
-            }).catch(() => {});
-          }
+        if (ordRes.status === 'fulfilled') {
+          setOrders(ordRes.value);
+        } else {
+          console.warn('Aviso al cargar órdenes de Supabase:', ordRes.reason);
+        }
 
-          if (remoteSettings.telegramChatId && remoteSettings.telegramChatId.trim()) {
-            setTelegramChatId(remoteSettings.telegramChatId.trim());
-            localStorage.setItem('american_clothes_telegram_chat_id_v1', remoteSettings.telegramChatId.trim());
-          } else if (localDirectChat.trim()) {
-            setTelegramChatId(localDirectChat.trim());
-          }
-
-          if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
-          if (remoteSettings.nequiNumber !== undefined) setNequiNumber(remoteSettings.nequiNumber);
-          if (remoteSettings.daviplataNumber !== undefined) setDaviplataNumber(remoteSettings.daviplataNumber);
-          if (remoteSettings.breBKey !== undefined) setBreBKey(remoteSettings.breBKey);
-          if (remoteSettings.paymentQrImage !== undefined) setPaymentQrImage(remoteSettings.paymentQrImage);
+        if (setRes.status === 'fulfilled' && setRes.value) {
+          applyRemoteSettings(setRes.value);
         }
 
         await loadRegisteredUsers();
 
-        setDataError(null);
+        if (prodRes.status === 'rejected' && ordRes.status === 'rejected') {
+          setDataError('No fue posible sincronizar con Supabase.');
+        } else {
+          setDataError(null);
+        }
       } catch (error) {
         console.error('Error al cargar datos desde Supabase:', error);
         if (isMounted) {

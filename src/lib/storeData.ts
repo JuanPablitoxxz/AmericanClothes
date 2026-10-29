@@ -205,17 +205,33 @@ export const seedProductsIfEmpty = async (_products?: Product[]): Promise<Produc
 
 export const fetchOrders = async (): Promise<Order[]> => {
   const client = requireSupabase();
-  const { data, error } = await client
-    .from('orders')
-    .select('*, order_items(*)')
-    .not('id', 'like', '__SYS_%')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await client
+      .from('orders')
+      .select('*, order_items(*)')
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-  if (error) {
-    console.error('Error al consultar órdenes de Supabase:', error);
-    throw error;
+    if (error) {
+      console.warn('Aviso en consulta combinada de órdenes, ejecutando consulta directa resiliente:', error);
+      const fallbackRes = await client
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (fallbackRes.error) throw fallbackRes.error;
+      return (fallbackRes.data ?? [])
+        .filter((row: any) => !row.id.startsWith('__SYS_'))
+        .map((row: any) => toOrder(row as OrderRow));
+    }
+
+    return (data ?? [])
+      .filter((row: any) => !row.id.startsWith('__SYS_'))
+      .map((row: any) => toOrder(row as OrderRow));
+  } catch (err) {
+    console.error('Error al consultar órdenes de Supabase:', err);
+    throw err;
   }
-  return (data ?? []).map((row) => toOrder(row as OrderRow));
 };
 
 export const saveProduct = async (product: Omit<Product, 'id'> & { id?: string }): Promise<Product> => {

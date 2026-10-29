@@ -75,6 +75,26 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [savedMessage, setSavedMessage] = useState(false);
   const [qrUploadMode, setQrUploadMode] = useState<'upload' | 'url'>('upload');
+  const [paymentSaveStatus, setPaymentSaveStatus] = useState<{
+    loading: boolean;
+    message: string | null;
+    isError: boolean;
+  }>({
+    loading: false,
+    message: null,
+    isError: false,
+  });
+
+  const [whatsappSaveStatus, setWhatsappSaveStatus] = useState<{
+    loading: boolean;
+    message: string | null;
+    isError: boolean;
+  }>({
+    loading: false,
+    message: null,
+    isError: false,
+  });
+
   const [testStatus, setTestStatus] = useState<{
     loading: boolean;
     message: string | null;
@@ -98,17 +118,156 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        alert('La imagen del QR de pago no debe exceder 4 MB.');
+      if (file.size > 8 * 1024 * 1024) {
+        alert('La imagen del QR de pago no debe exceder 8 MB.');
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setPaymentQrImage?.(reader.result);
-        }
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.88);
+            setPaymentQrImage?.(compressed);
+            try {
+              localStorage.setItem('american_clothes_payment_qr_v1', compressed);
+            } catch {}
+          } else if (typeof event.target?.result === 'string') {
+            setPaymentQrImage?.(event.target.result);
+            try {
+              localStorage.setItem('american_clothes_payment_qr_v1', event.target.result);
+            } catch {}
+          }
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSavePaymentConfig = async () => {
+    setPaymentSaveStatus({ loading: true, message: 'Guardando medios de pago y código QR...', isError: false });
+    try {
+      if (typeof localStorage !== 'undefined') {
+        if (nequiNumber?.trim()) localStorage.setItem('american_clothes_nequi_number_v1', nequiNumber.trim());
+        if (daviplataNumber?.trim()) localStorage.setItem('american_clothes_daviplata_number_v1', daviplataNumber.trim());
+        if (breBKey?.trim()) localStorage.setItem('american_clothes_bre_b_key_v1', breBKey.trim());
+        if (paymentQrImage?.trim()) {
+          localStorage.setItem('american_clothes_payment_qr_v1', paymentQrImage.trim());
+        } else {
+          localStorage.removeItem('american_clothes_payment_qr_v1');
+        }
+      }
+
+      if (isSupabaseConfigured) {
+        await saveCloudSettings({
+          shaderOpacity,
+          currency,
+          announcementText,
+          whatsappNumber,
+          whatsappApiKey,
+          whatsappWebhookUrl,
+          autoNotifyAdmin,
+          telegramBotToken,
+          telegramChatId,
+          autoNotifyTelegram,
+          nequiNumber: nequiNumber?.trim() || '3224127814',
+          daviplataNumber: daviplataNumber?.trim() || '3224127814',
+          breBKey: breBKey?.trim() || '3224127814',
+          paymentQrImage: paymentQrImage || '',
+        });
+      }
+
+      setPaymentSaveStatus({
+        loading: false,
+        message: '✓ Medios de pago y código QR guardados y blindados permanentemente.',
+        isError: false,
+      });
+      setTimeout(() => {
+        setPaymentSaveStatus((prev) => ({ ...prev, message: null }));
+      }, 4000);
+    } catch (err: any) {
+      setPaymentSaveStatus({
+        loading: false,
+        message: err?.message || 'Error al guardar medios de pago.',
+        isError: true,
+      });
+    }
+  };
+
+  const handleSaveWhatsAppConfig = async () => {
+    const cleanPhone = whatsappNumber.trim();
+    if (!cleanPhone) {
+      setWhatsappSaveStatus({
+        loading: false,
+        message: 'Por favor ingresa el número de WhatsApp antes de guardar.',
+        isError: true,
+      });
+      return;
+    }
+
+    setWhatsappSaveStatus({ loading: true, message: 'Guardando configuración de WhatsApp...', isError: false });
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('american_clothes_whatsapp_number_v1', cleanPhone);
+        if (whatsappApiKey !== undefined) {
+          localStorage.setItem('american_clothes_whatsapp_apikey_v1', whatsappApiKey.trim());
+        }
+        if (whatsappWebhookUrl !== undefined) {
+          localStorage.setItem('american_clothes_whatsapp_webhook_v1', whatsappWebhookUrl.trim());
+        }
+      }
+
+      if (isSupabaseConfigured) {
+        await saveCloudSettings({
+          shaderOpacity,
+          currency,
+          announcementText,
+          whatsappNumber: cleanPhone,
+          whatsappApiKey: whatsappApiKey?.trim() || '',
+          whatsappWebhookUrl: whatsappWebhookUrl?.trim() || '',
+          autoNotifyAdmin,
+          telegramBotToken,
+          telegramChatId,
+          autoNotifyTelegram,
+          nequiNumber,
+          daviplataNumber,
+          breBKey,
+          paymentQrImage,
+        });
+      }
+
+      setWhatsappSaveStatus({
+        loading: false,
+        message: '✓ Número y ajustes de WhatsApp guardados permanentemente.',
+        isError: false,
+      });
+      setTimeout(() => {
+        setWhatsappSaveStatus((prev) => ({ ...prev, message: null }));
+      }, 4000);
+    } catch (err: any) {
+      setWhatsappSaveStatus({
+        loading: false,
+        message: err?.message || 'Error al guardar.',
+        isError: true,
+      });
     }
   };
 
@@ -577,12 +736,42 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setPaymentQrImage?.('')}
+                  onClick={() => {
+                    setPaymentQrImage?.('');
+                    try {
+                      localStorage.removeItem('american_clothes_payment_qr_v1');
+                    } catch {}
+                  }}
                   className="px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 font-label-caps tracking-[1px] border border-red-200 transition-colors"
                 >
                   Quitar QR
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* Botón de Guardar Medios de Pago y QR */}
+          <div className="pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-black/10">
+            <button
+              type="button"
+              disabled={paymentSaveStatus.loading}
+              onClick={handleSavePaymentConfig}
+              className="px-4 py-2.5 bg-[#1A1A1A] hover:bg-[#333333] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base">save</span>
+              {paymentSaveStatus.loading ? 'Guardando...' : 'Guardar Medios de Pago y QR'}
+            </button>
+
+            {paymentSaveStatus.message && (
+              <span
+                className={`text-xs p-2 border font-sans-body max-w-md ${
+                  paymentSaveStatus.isError
+                    ? 'bg-red-50 text-red-800 border-red-300'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                }`}
+              >
+                {paymentSaveStatus.message}
+              </span>
             )}
           </div>
         </div>
@@ -791,27 +980,39 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </span>
           </div>
 
-          {/* Botón de Prueba y Feedback */}
-          <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-black/10">
-            <button
-              type="button"
-              disabled={testStatus.loading}
-              onClick={handleTestWhatsAppNotification}
-              className="px-4 py-2.5 bg-[#25D366] hover:bg-[#20ba5a] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-base">send</span>
-              {testStatus.loading ? 'Enviando...' : 'Probar Notificación en mi WhatsApp'}
-            </button>
+          {/* Botones de Guardar, Prueba WhatsApp y Feedback */}
+          <div className="pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-black/10">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                disabled={whatsappSaveStatus.loading}
+                onClick={handleSaveWhatsAppConfig}
+                className="px-4 py-2.5 bg-[#1A1A1A] hover:bg-[#333333] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-base">save</span>
+                {whatsappSaveStatus.loading ? 'Guardando...' : 'Guardar Ajustes de WhatsApp'}
+              </button>
 
-            {testStatus.message && (
+              <button
+                type="button"
+                disabled={testStatus.loading}
+                onClick={handleTestWhatsAppNotification}
+                className="px-4 py-2.5 border border-black/20 bg-[#25D366] hover:bg-[#20ba5a] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-base">send</span>
+                {testStatus.loading ? 'Enviando...' : 'Probar Notificación en mi WhatsApp'}
+              </button>
+            </div>
+
+            {(whatsappSaveStatus.message || testStatus.message) && (
               <span
                 className={`text-xs p-2 border font-sans-body max-w-md ${
-                  testStatus.isError
+                  (whatsappSaveStatus.isError || testStatus.isError)
                     ? 'bg-red-50 text-red-800 border-red-300'
                     : 'bg-emerald-50 text-emerald-800 border-emerald-300'
                 }`}
               >
-                {testStatus.message}
+                {whatsappSaveStatus.message || testStatus.message}
               </span>
             )}
           </div>

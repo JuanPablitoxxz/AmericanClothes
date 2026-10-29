@@ -23,6 +23,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
   const activeProductsCount = products.filter((p) => p.status === 'ACTIVO').length;
+  const totalRevenue = orders
+    .filter((o) => o.status !== 'CANCELADO')
+    .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const processingOrdersCount = orders.filter((o) => o.status === 'PROCESANDO').length;
 
   const filteredProducts = products.filter(
     (p) =>
@@ -60,30 +64,30 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         {/* Ventas Totales */}
         <div className="bg-[#EFECE7] p-6 border border-black/10 hover:border-black/30 transition-colors relative group shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-label-caps text-[10px] text-[#888888] tracking-[2px]">Ventas Totales</h3>
+            <h3 className="font-label-caps text-[10px] text-[#888888] tracking-[2px]">Ventas Totales (Supabase)</h3>
             <span className="material-symbols-outlined text-[#1A1A1A]">trending_up</span>
           </div>
           <div className="font-serif-display text-3xl md:text-4xl text-[#1A1A1A] mb-2 font-normal tracking-tight">
-            {formatCOP(180920000)}
+            {formatCOP(totalRevenue)}
           </div>
           <div className="text-xs text-[#1A1A1A] flex items-center gap-1 font-sans-body font-semibold">
-            <span className="material-symbols-outlined text-sm">arrow_upward</span>
-            12.5% <span className="text-[#888888] font-normal ml-1">vs mes anterior</span>
+            <span className="material-symbols-outlined text-sm text-emerald-700">cloud_done</span>
+            <span>{activeProductsCount} piezas activas en catálogo</span>
           </div>
         </div>
 
-        {/* Pedidos Hoy */}
+        {/* Pedidos Registrados */}
         <div className="bg-[#EFECE7] p-6 border border-black/10 hover:border-black/30 transition-colors relative group shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-label-caps text-[10px] text-[#888888] tracking-[2px]">Pedidos Hoy</h3>
+            <h3 className="font-label-caps text-[10px] text-[#888888] tracking-[2px]">Pedidos Registrados</h3>
             <span className="material-symbols-outlined text-[#1A1A1A]">shopping_bag</span>
           </div>
           <div className="font-serif-display text-3xl md:text-4xl text-[#1A1A1A] mb-2 font-normal tracking-tight">
-            124
+            {orders.length}
           </div>
           <div className="text-xs text-[#1A1A1A] flex items-center gap-1 font-sans-body font-semibold">
-            <span className="material-symbols-outlined text-sm">arrow_upward</span>
-            4.2% <span className="text-[#888888] font-normal ml-1">vs ayer</span>
+            <span className="material-symbols-outlined text-sm">pending_actions</span>
+            {processingOrdersCount} <span className="text-[#888888] font-normal ml-1">en estado PROCESANDO</span>
           </div>
         </div>
 
@@ -94,10 +98,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="material-symbols-outlined text-amber-700">warning</span>
           </div>
           <div className="font-serif-display text-3xl md:text-4xl text-[#1A1A1A] mb-2 font-normal tracking-tight">
-            {lowStockCount > 0 ? lowStockCount : 8}
+            {lowStockCount}
           </div>
           <div className="text-xs text-amber-800 flex items-center gap-1 font-sans-body">
-            <span>Productos requieren atención</span>
+            <span>Productos con ≤ 5 unidades</span>
           </div>
         </div>
       </div>

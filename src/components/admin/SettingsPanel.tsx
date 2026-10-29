@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { saveCloudSettings } from '../../lib/storeData';
 
 interface SettingsPanelProps {
   shaderOpacity: number;
@@ -27,8 +28,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [savedMessage, setSavedMessage] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSupabaseConfigured) {
+      try {
+        await saveCloudSettings({
+          shaderOpacity,
+          currency,
+          announcementText,
+          whatsappNumber,
+        });
+      } catch (err) {
+        console.error('Error al guardar ajustes en Supabase:', err);
+      }
+    }
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 2000);
   };

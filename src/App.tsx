@@ -14,9 +14,12 @@ import { isSupabaseConfigured, supabase } from './lib/supabase';
 import {
   createOrder,
   deleteProduct,
+  fetchCloudSettings,
   fetchOrders,
   fetchProducts,
+  saveCloudSettings,
   saveProduct,
+  seedProductsIfEmpty,
   updateOrderStatus,
   updateProductStatus,
   updateProductStock,
@@ -251,9 +254,10 @@ export default function App() {
       try {
         if (!isSupabaseConfigured) return;
 
-        const [remoteProducts, remoteOrders] = await Promise.all([
-          fetchProducts(),
+        const [remoteProducts, remoteOrders, remoteSettings] = await Promise.all([
+          seedProductsIfEmpty(INITIAL_PRODUCTS),
           fetchOrders(),
+          fetchCloudSettings(),
         ]);
 
         if (!isMounted) return;
@@ -261,6 +265,14 @@ export default function App() {
           setProducts(remoteProducts);
         }
         setOrders(remoteOrders);
+
+        if (remoteSettings) {
+          setShaderOpacity(remoteSettings.shaderOpacity);
+          setCurrency(remoteSettings.currency);
+          setAnnouncementText(remoteSettings.announcementText);
+          setWhatsappNumber(remoteSettings.whatsappNumber);
+        }
+
         setDataError(null);
       } catch (error) {
         console.error('Error al cargar datos desde Supabase:', error);
@@ -272,8 +284,40 @@ export default function App() {
 
     loadStoreData();
 
+    // Suscripción en tiempo real a cambios en Supabase (productos y órdenes)
+    const realtimeChannel = supabase
+      ?.channel('american-clothes-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        async () => {
+          try {
+            const latestProducts = await fetchProducts();
+            if (isMounted && latestProducts.length > 0) {
+              setProducts(latestProducts);
+            }
+          } catch {}
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        async () => {
+          try {
+            const latestOrders = await fetchOrders();
+            if (isMounted) {
+              setOrders(latestOrders);
+            }
+          } catch {}
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      if (realtimeChannel) {
+        supabase?.removeChannel(realtimeChannel);
+      }
     };
   }, []);
 

@@ -215,7 +215,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const { count: orderCount, error: oErr } = await supabase
           .from('orders')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true })
+          .not('id', 'like', '__SYS_%');
 
         const status = {
           connected: !pErr && !oErr,
@@ -324,7 +325,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'supabase_list_orders': {
-        let query = supabase.from('orders').select('*, order_items(*)');
+        let query = supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .not('id', 'like', '__SYS_%');
         if (args?.status) query = query.eq('status', args.status);
         if (args?.limit) query = query.limit(Number(args.limit));
         else query = query.limit(50);

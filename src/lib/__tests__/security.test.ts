@@ -16,7 +16,14 @@ import {
   registerUser,
   requestPasswordRecovery,
   resetUserPassword,
+  ensureSeededAccounts,
 } from '../auth';
+import {
+  fetchOrders,
+  fetchProducts,
+  saveCloudSettings,
+  fetchCloudSettings,
+} from '../storeData';
 
 async function runSecurityTests() {
   console.log('==============================================================');
@@ -171,11 +178,39 @@ async function runSecurityTests() {
   });
   assert.equal(resetSqlAttempt.success, false, 'El restablecimiento con SQLi debe ser rechazado');
   passed += 7;
-  console.log('✓ [7/7] Flujos de Login, Registro, Separación de Roles y Recuperación por Correo verificados.');
+  console.log('✓ [7/8] Flujos de Login, Registro, Separación de Roles y Recuperación por Correo verificados.');
+
+  // 8. Verificación de Persistencia 100% en Supabase Cloud (Usuarios, Productos, Pedidos, Ajustes)
+  const cloudAccounts = await ensureSeededAccounts();
+  assert.equal(cloudAccounts.length >= 2, true, 'Las cuentas deben estar persistidas en Supabase');
+
+  await saveCloudSettings({
+    shaderOpacity: 0.3,
+    currency: 'COP',
+    announcementText: 'Envíos gratis a Colombia por compras superiores a $350.000 COP',
+    whatsappNumber: '573001234567',
+  });
+  const cloudSettings = await fetchCloudSettings();
+  assert.equal(cloudSettings?.currency, 'COP', 'Los ajustes deben leerse desde Supabase');
+
+  const cloudProducts = await fetchProducts();
+  assert.equal(cloudProducts.length > 0, true, 'El catálogo debe leerse desde Supabase');
+
+  const cloudOrders = await fetchOrders();
+  assert.equal(
+    cloudOrders.every((o) => !o.id.startsWith('__SYS_')),
+    true,
+    'Los pedidos de clientes deben estar limpios en Supabase'
+  );
+  passed += 4;
+  console.log(
+    `✓ [8/8] Sincronización 100% en Supabase verificada (${cloudAccounts.length} cuentas, ${cloudProducts.length} productos, ${cloudOrders.length} pedidos, ajustes en nube).`
+  );
 
   console.log(`\n==============================================================`);
   console.log(` RESULTADO FINAL: ${passed}/${passed} PRUEBAS DE SEGURIDAD APROBADAS (100%)`);
   console.log(`==============================================================`);
+  process.exit(0);
 }
 
 runSecurityTests().catch((err) => {

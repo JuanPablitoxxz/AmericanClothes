@@ -150,6 +150,7 @@ export const fetchOrders = async (): Promise<Order[]> => {
   const { data, error } = await client
     .from('orders')
     .select('*, order_items(*)')
+    .not('id', 'like', '__SYS_%')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -330,3 +331,94 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
   }
   return toOrder(data as OrderRow);
 };
+
+export interface StoreSettings {
+  shaderOpacity: number;
+  currency: string;
+  announcementText: string;
+  whatsappNumber: string;
+}
+
+const SETTINGS_RECORD_ID = '__SYS_SETTINGS__';
+
+export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
+  const client = requireSupabase();
+
+  // Intentar primero tabla dedicada store_settings si existe
+  const { data: tableData, error: tableErr } = await client
+    .from('store_settings')
+    .select('*')
+    .eq('id', 'default')
+    .maybeSingle();
+
+  if (!tableErr && tableData) {
+    return {
+      shaderOpacity: Number(tableData.shader_opacity ?? 0.3),
+      currency: String(tableData.currency ?? 'COP'),
+      announcementText: String(
+        tableData.announcement_text ??
+          'Envíos gratis a Colombia por compras superiores a $350.000 COP'
+      ),
+      whatsappNumber: String(tableData.whatsapp_number ?? '573001234567'),
+    };
+  }
+
+  // Respaldo 100% en Supabase PostgreSQL
+  const { data, error } = await client
+    .from('orders')
+    .select('shipping_address')
+    .eq('id', SETTINGS_RECORD_ID)
+    .maybeSingle();
+
+  if (error || !data?.shipping_address) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(data.shipping_address);
+    return {
+      shaderOpacity: Number(parsed.shaderOpacity ?? 0.3),
+      currency: String(parsed.currency ?? 'COP'),
+      announcementText: String(
+        parsed.announcementText ??
+          'Envíos gratis a Colombia por compras superiores a $350.000 COP'
+      ),
+      whatsappNumber: String(parsed.whatsappNumber ?? '573001234567'),
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const saveCloudSettings = async (settings: StoreSettings): Promise<void> => {
+  const client = requireSupabase();
+  const safeSettings: StoreSettings = {
+    shaderOpacity: Math.min(1, Math.max(0, Number(settings.shaderOpacity) || 0.3)),
+    currency: assertSafeString(settings.currency, 'Moneda') || 'COP',
+    announcementText: assertSafeString(settings.announcementText, 'Texto de anuncio'),
+    whatsappNumber: assertSafeString(settings.whatsappNumber, 'WhatsApp'),
+  };
+
+  // Intentar guardar en store_settings si existe
+  const { error: tableErr } = await client.from('store_settings').upsert({
+    id: 'default',
+    shader_opacity: safeSettings.shaderOpacity,
+    currency: safeSettings.currency,
+    announcement_text: safeSettings.announcementText,
+    whatsapp_number: safeSettings.whatsappNumber,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (!tableErr) return;
+
+  // Persistir en Supabase PostgreSQL
+  await client.from('orders').upsert({
+    id: SETTINGS_RECORD_ID,
+    customer_name: 'SYSTEM_CONFIG',
+    email: 'system@americanclothes.com',
+    total: 0,
+    status: 'ENTREGADO',
+    shipping_address: JSON.stringify(safeSettings),
+  });
+};
+

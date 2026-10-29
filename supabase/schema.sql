@@ -1,19 +1,31 @@
 -- ==============================================================================
--- SCHEMA LIMPIO Y SEGURO PARA SUPABASE - AMERICAN CLOTHES
+-- SCHEMA COMPLETO 100% SUPABASE - AMERICAN CLOTHES
 -- ==============================================================================
 
--- 1. TABLA DE PERFILES DE USUARIO Y ROLES (SEPARACIÓN ADMIN / CLIENTES)
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+-- 1. TABLA DE USUARIOS Y CREDENCIALES CIFRADAS (PBKDF2-SHA256)
+CREATE TABLE IF NOT EXISTS public.app_users (
+  id text PRIMARY KEY,
   email text NOT NULL UNIQUE CHECK (char_length(email) <= 254),
-  full_name text NOT NULL CHECK (char_length(full_name) <= 100),
+  name text NOT NULL CHECK (char_length(name) <= 100),
   phone text CHECK (char_length(phone) <= 25),
   role text NOT NULL DEFAULT 'client' CHECK (role IN ('admin', 'client')),
+  salt text NOT NULL,
+  password_hash text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2. TABLAS PRINCIPALES DE COMERCIO
+-- 2. TABLA DE CONFIGURACIÓN GLOBAL DE LA TIENDA
+CREATE TABLE IF NOT EXISTS public.store_settings (
+  id text PRIMARY KEY DEFAULT 'default',
+  shader_opacity numeric NOT NULL DEFAULT 0.3,
+  currency text NOT NULL DEFAULT 'COP',
+  announcement_text text NOT NULL DEFAULT 'Envíos gratis a Colombia por compras superiores a $350.000 COP',
+  whatsapp_number text NOT NULL DEFAULT '573001234567',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 3. TABLAS PRINCIPALES DE COMERCIO
 CREATE TABLE IF NOT EXISTS public.products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -53,12 +65,20 @@ CREATE TABLE IF NOT EXISTS public.order_items (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2. HABILITAR SEGURIDAD (ROW LEVEL SECURITY)
+-- 4. HABILITAR SEGURIDAD (ROW LEVEL SECURITY)
+ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
--- 3. POLÍTICAS DE ACCESO
+-- 5. POLÍTICAS DE ACCESO
+DROP POLICY IF EXISTS "Public access app_users" ON public.app_users;
+CREATE POLICY "Public access app_users" ON public.app_users FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public access store_settings" ON public.store_settings;
+CREATE POLICY "Public access store_settings" ON public.store_settings FOR ALL USING (true) WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Public read products" ON public.products;
 CREATE POLICY "Public read products" ON public.products FOR SELECT USING (true);
 

@@ -287,7 +287,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </p>
             <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#555555] leading-relaxed">
               <li>
-                Desde tu WhatsApp (el celular registrado arriba), envía este mensaje: <code className="bg-[#EFECE7] px-1.5 py-0.5 font-mono text-[#1A1A1A] font-bold">I allow callmebot to send me messages</code> al número <a href="https://wa.me/34644519523?text=I%20allow%20callmebot%20to%20send%20me%20messages" target="_blank" rel="noopener noreferrer" className="text-emerald-700 font-bold underline">+34 644 51 95 23</a> (o haz clic en el enlace para abrirlo directo).
+                Desde tu WhatsApp (el celular registrado arriba), envía este mensaje: <code className="bg-[#EFECE7] px-1.5 py-0.5 font-mono text-[#1A1A1A] font-bold">I allow callmebot to send me messages</code> al nuevo número activo <a href="https://wa.me/34623786449?text=I%20allow%20callmebot%20to%20send%20me%20messages" target="_blank" rel="noopener noreferrer" className="text-emerald-700 font-bold underline">+34 623 78 64 49</a> (haz clic en el enlace para abrirlo directo).
               </li>
               <li>
                 El bot te responderá en pocos segundos con tu <strong>apikey</strong> (un número de 6 o 7 dígitos).

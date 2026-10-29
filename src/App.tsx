@@ -45,6 +45,7 @@ import { ShoppingBagDrawer } from './components/storefront/ShoppingBagDrawer';
 import { CustomerAccountModal } from './components/storefront/CustomerAccountModal';
 import { LookbookJournal } from './components/storefront/LookbookJournal';
 import { Footer } from './components/storefront/Footer';
+import { WhatsAppFloatingButton } from './components/storefront/WhatsAppFloatingButton';
 
 // Admin components
 import { AdminSidebar } from './components/admin/AdminSidebar';
@@ -911,7 +912,13 @@ export default function App() {
           <LookbookJournal />
 
           {/* Footer */}
-          <Footer />
+          <Footer whatsappNumber={whatsappNumber} />
+
+          {/* Botón Flotante de Atención por WhatsApp */}
+          <WhatsAppFloatingButton
+            whatsappNumber={whatsappNumber}
+            customerName={currentUser?.name}
+          />
 
           {/* Product Detail Modal */}
           <ProductDetailModal

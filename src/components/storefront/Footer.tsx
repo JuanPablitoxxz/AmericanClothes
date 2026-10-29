@@ -1,6 +1,19 @@
 import React from 'react';
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  whatsappNumber?: string;
+}
+
+export const Footer: React.FC<FooterProps> = ({ whatsappNumber = '573001234567' }) => {
+  const rawDigits = (whatsappNumber || '573001234567').replace(/\D/g, '');
+  const formattedPhone =
+    rawDigits.length === 10 && rawDigits.startsWith('3')
+      ? `57${rawDigits}`
+      : rawDigits || '573001234567';
+  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(
+    '¡Hola American Clothes! Me gustaría recibir atención personalizada e información sobre sus prendas disponibles.'
+  )}`;
+
   return (
     <footer className="bg-[#1A1A1A] text-[#F9F8F6] font-sans-body border-t border-white/10 px-4 sm:px-8 md:px-16 py-12 sm:py-16 z-10 relative">
       <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -15,28 +28,32 @@ export const Footer: React.FC = () => {
 
         <div className="lg:col-span-7 flex flex-wrap gap-6 sm:gap-8 lg:gap-10 justify-center sm:justify-start lg:justify-end items-center">
           <a
-            href="#"
+            href="#catalog"
             className="text-[#999999] hover:text-[#F9F8F6] transition-colors font-label-caps text-[10px] tracking-[2px] uppercase"
           >
-            Política de Privacidad
+            Catálogo
           </a>
           <a
-            href="#"
+            href="#journal"
             className="text-[#999999] hover:text-[#F9F8F6] transition-colors font-label-caps text-[10px] tracking-[2px] uppercase"
           >
-            Términos de Servicio
+            Editorial
           </a>
           <a
-            href="#"
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-[#999999] hover:text-[#F9F8F6] transition-colors font-label-caps text-[10px] tracking-[2px] uppercase"
           >
             Envíos & Devoluciones
           </a>
           <a
-            href="#"
-            className="text-[#999999] hover:text-[#F9F8F6] transition-colors font-label-caps text-[10px] tracking-[2px] uppercase"
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#e9c349] hover:text-[#F9F8F6] transition-colors font-label-caps text-[10px] tracking-[2px] uppercase font-bold"
           >
-            Contacto & Atelier
+            Contacto WhatsApp
           </a>
         </div>
       </div>

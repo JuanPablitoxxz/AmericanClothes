@@ -4,11 +4,11 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-[#1A1A1A] text-[#F9F8F6] font-sans-body border-t border-white/10 px-6 md:px-16 py-16 grid grid-cols-1 md:grid-cols-12 gap-8 z-10 relative">
       <div className="md:col-span-4 flex flex-col justify-between gap-6">
-        <span className="font-serif-display text-4xl md:text-5xl font-normal tracking-tighter text-[#F9F8F6]">
-          AESTHETE
+        <span className="font-serif-display text-3xl md:text-4xl font-normal tracking-tight text-[#F9F8F6]">
+          AMERICAN CLOTHES
         </span>
         <p className="text-[#999999] font-label-caps text-[10px] uppercase tracking-[2px]">
-          © 2026 AESTHETE COLOMBIA. TODOS LOS DERECHOS RESERVADOS.
+          © 2026 AMERICAN CLOTHES. TODOS LOS DERECHOS RESERVADOS.
         </p>
       </div>
 

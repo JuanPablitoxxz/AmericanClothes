@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# American Clothes - High-Fashion E-Commerce & Management Platform
 
-# Run and deploy your AI Studio app
+Plataforma oficial de comercio electrónico y administración para **American Clothes**.
 
-This contains everything you need to run your app locally.
+## Características
 
-View your app in AI Studio: https://ai.studio/apps/e8a6eb74-a20a-4ef1-b78b-b526cc0c1f79
+- **Storefront Editorial:** Catálogo interactivo de moda, colecciones por categorías (*Hombre, Mujer, Accesorios, Archivo*), bolsa de compras y notificaciones directas por WhatsApp para compras en Colombia.
+- **Panel Administrativo:** Gestión de inventario, edición de precios y stock, creación de productos con fotos locales, y control de pedidos en tiempo real.
+- **Persistencia en la Nube:** Conexión directa a **Supabase PostgreSQL** con políticas RLS y respaldo automático.
+- **Despliegue Continuo:** Listo para Vercel con configuración SPA y soporte de variables de entorno.
 
-## Run Locally
+## Ejecución Local
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. Instalar dependencias:
+   ```bash
+   npm install
+   ```
+2. Iniciar servidor de desarrollo:
+   ```bash
+   npm run dev
+   ```
+3. Abrir en el navegador: [http://localhost:3000](http://localhost:3000)

@@ -44,10 +44,10 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   const total = Math.max(0, subtotal - discount);
 
   const applyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'AESTHETE10') {
+    if (promoCode.trim().toUpperCase() === 'AMERICAN10' || promoCode.trim().toUpperCase() === 'AESTHETE10') {
       setDiscount(subtotal * 0.1);
     } else {
-      alert('Código no válido. Prueba con AESTHETE10');
+      alert('Código no válido. Prueba con AMERICAN10');
     }
   };
 
@@ -137,7 +137,7 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
             <div className="space-y-2 pt-2">
               <a
                 href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(
-                  `*NUEVO PEDIDO AESTHETE / NEGRO*\n\n` +
+                  `*NUEVO PEDIDO AMERICAN CLOTHES*\n\n` +
                   `*Orden:* ${confirmedOrder.id}\n` +
                   `*Cliente:* ${confirmedOrder.name}\n` +
                   `*Teléfono:* ${confirmedOrder.phone}\n` +
@@ -340,7 +340,7 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Código promocional (ej. AESTHETE10)"
+                placeholder="Código promocional (ej. AMERICAN10)"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
                 className="flex-1 bg-[#F9F8F6] border border-black/10 p-2 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"

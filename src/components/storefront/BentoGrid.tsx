@@ -13,7 +13,7 @@ export const BentoGrid: React.FC<BentoGridProps> = ({ onSelectCategory }) => {
           Líneas de Diseño & Categorías
         </span>
         <h2 className="font-serif-display text-4xl md:text-5xl text-[#1A1A1A] font-normal">
-          Colecciones AESTHETE
+          Colecciones American Clothes
         </h2>
       </div>
 

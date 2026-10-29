@@ -17,7 +17,7 @@ export const TopBarSwitch: React.FC<TopBarSwitchProps> = ({
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-2 font-label-caps text-[10px] text-[#F9F8F6] tracking-[3px] uppercase font-bold">
           <span className="w-2 h-2 rounded-full bg-[#F9F8F6]"></span>
-          AESTHETE STUDIO
+          AMERICAN CLOTHES
         </span>
         <span className="text-[#888888] hidden sm:inline">|</span>
         <span className="text-[#999999] text-[10px] uppercase tracking-widest hidden md:inline font-mono">

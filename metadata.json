@@ -1,6 +1,6 @@
 {
-  "name": "Negrocirck",
-  "description": "Negro crick",
+  "name": "American Clothes",
+  "description": "American Clothes Boutique & Storefront",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

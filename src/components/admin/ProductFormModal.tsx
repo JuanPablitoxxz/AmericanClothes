@@ -40,7 +40,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setSizesStr(productToEdit.sizes && productToEdit.sizes.length > 0 ? productToEdit.sizes.join(', ') : 'Única');
     } else {
       setName('');
-      setSku(`AES-${Math.floor(100 + Math.random() * 900)}`);
+      setSku(`AMC-${Math.floor(100 + Math.random() * 900)}`);
       setPrice(450000);
       setStock(15);
       setCategory('Hombre');
@@ -48,7 +48,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setImage(
         'https://lh3.googleusercontent.com/aida-public/AB6AXuDe8JFelISU8TiNUjGi_bscGbRRuZpQiYRbbmzoOXJGdEweGYCQsVwHdSkmR5m0X9qGyvvjN6MOPPCBsB61M1Uscn_4bwQ_XZsK5eKqjyfEZTo3op4zYnD5RRjkzwS35Cp9SwUaJi2lXSYL8Yotxim3wDveH8LLeMT1q3pYSEepnYqECKV766_obVtzw5ToXAI4JHqAHH94pM3_xOG-gb8Z6UzG0z0nfm_jypx5-3YEGCLGdXxdqfPr'
       );
-      setDescription('Pieza de edición limitada confeccionada con técnicas artesanales AESTHETE en Colombia.');
+      setDescription('Pieza de edición limitada confeccionada por American Clothes en Colombia.');
       setSizesStr('S, M, L, XL');
     }
   }, [productToEdit, isOpen]);

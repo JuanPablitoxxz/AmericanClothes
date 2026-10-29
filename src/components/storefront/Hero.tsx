@@ -10,7 +10,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore }) => {
       <div className="max-w-[1440px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 min-h-[75vh]">
         {/* Left Editorial Text Content */}
         <div className="lg:col-span-5 p-8 md:p-16 flex flex-col justify-center z-10 animate-fade-up">
-          <span className="sub-headline mb-4">Historia Destacada - Bogotá Vol. 04</span>
+          <span className="sub-headline mb-4">Historia Destacada - American Clothes 2026</span>
           <h1 className="font-serif-display text-5xl md:text-7xl lg:text-8xl font-normal text-[#1A1A1A] leading-[0.95] tracking-tight mb-6">
             Formas <br />
             <span className="italic font-normal">Puras.</span>
@@ -37,7 +37,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore }) => {
             />
             <div className="absolute top-0 right-0 w-[60%] h-[120%] bg-white/20 transform rotate-[12deg] pointer-events-none"></div>
             <div className="absolute bottom-6 left-6 p-4 text-white mix-blend-difference">
-              <span className="text-[10px] uppercase tracking-[3px] font-bold">Colección Alta Costura Colombia 2026</span>
+              <span className="text-[10px] uppercase tracking-[3px] font-bold">Colección American Clothes 2026</span>
             </div>
           </div>
 

@@ -35,8 +35,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         </div>
 
         {/* Brand Logo */}
-        <div className="font-serif-display tracking-tighter text-[#F9F8F6] text-3xl font-normal border-b border-white/10 pb-6">
-          AESTHETE
+        <div className="font-serif-display tracking-tight text-[#F9F8F6] text-2xl font-normal border-b border-white/10 pb-6">
+          AMERICAN CLOTHES
         </div>
       </div>
 

@@ -60,7 +60,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         <div className="p-6 md:p-10 flex flex-col justify-between space-y-6">
           <div>
             <span className="sub-headline block mb-1">
-              AESTHETE {product.category.toUpperCase()}
+              AMERICAN CLOTHES • {product.category.toUpperCase()}
             </span>
             <h2 className="font-serif-display text-3xl font-normal text-[#1A1A1A] mb-3">
               {product.name}

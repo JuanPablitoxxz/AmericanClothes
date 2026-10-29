@@ -36,10 +36,10 @@ import { SettingsPanel } from './components/admin/SettingsPanel';
 import { ProductFormModal } from './components/admin/ProductFormModal';
 
 const STORAGE_KEYS = {
-  PRODUCTS: 'negrocirck_products_v1',
-  ORDERS: 'negrocirck_orders_v1',
-  CART: 'negrocirck_cart_v1',
-  SETTINGS: 'negrocirck_settings_v1',
+  PRODUCTS: 'american_clothes_products_v1',
+  ORDERS: 'american_clothes_orders_v1',
+  CART: 'american_clothes_cart_v1',
+  SETTINGS: 'american_clothes_settings_v1',
 };
 
 const getInitialProducts = (): Product[] => {
@@ -316,7 +316,7 @@ export default function App() {
         const newProduct: Product = {
           ...productData,
           id: String(Date.now()),
-          sku: productData.sku || `AES-${Math.floor(100 + Math.random() * 900)}`,
+          sku: productData.sku || `AMC-${Math.floor(100 + Math.random() * 900)}`,
         };
         setProducts((prev) => [newProduct, ...prev]);
       }

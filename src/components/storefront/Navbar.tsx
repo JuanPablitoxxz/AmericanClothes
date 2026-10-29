@@ -29,9 +29,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             e.preventDefault();
             onSelectCategory('Todos');
           }}
-          className="font-serif-display text-2xl md:text-3xl font-bold tracking-tighter text-[#1A1A1A] hover:text-[#555555] transition-colors"
+          className="font-serif-display text-xl md:text-2xl font-bold tracking-tight text-[#1A1A1A] hover:text-[#555555] transition-colors"
         >
-          AESTHETE
+          AMERICAN CLOTHES
         </a>
 
         {/* Desktop Links */}

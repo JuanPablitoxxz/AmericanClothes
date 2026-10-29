@@ -1,4 +1,4 @@
-# Servidor MCP de Supabase para Atelier Negro
+# Servidor MCP de Supabase para American Clothes
 
 Este servidor Model Context Protocol (MCP) conecta a los asistentes de inteligencia artificial (Antigravity, Claude, Cursor) directamente con la base de datos de **Supabase** de tu proyecto.
 

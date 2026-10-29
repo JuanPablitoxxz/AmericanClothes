@@ -408,6 +408,9 @@ export interface StoreSettings {
   currency: string;
   announcementText: string;
   whatsappNumber: string;
+  whatsappApiKey?: string;
+  whatsappWebhookUrl?: string;
+  autoNotifyAdmin?: boolean;
 }
 
 const SETTINGS_RECORD_ID = '__SYS_SETTINGS__';
@@ -415,7 +418,21 @@ const SETTINGS_RECORD_ID = '__SYS_SETTINGS__';
 export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
   const client = requireSupabase();
 
-  // Intentar primero tabla dedicada store_settings si existe
+  // Revisar si hay configuración extendida en el registro seguro en Supabase
+  let fallbackJson: Partial<StoreSettings> | null = null;
+  try {
+    const { data: orderData } = await client
+      .from('orders')
+      .select('shipping_address')
+      .eq('id', SETTINGS_RECORD_ID)
+      .maybeSingle();
+
+    if (orderData?.shipping_address) {
+      fallbackJson = JSON.parse(orderData.shipping_address);
+    }
+  } catch {}
+
+  // Intentar tabla dedicada store_settings si existe
   const { data: tableData, error: tableErr } = await client
     .from('store_settings')
     .select('*')
@@ -424,41 +441,39 @@ export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
 
   if (!tableErr && tableData) {
     return {
-      shaderOpacity: Number(tableData.shader_opacity ?? 0.3),
-      currency: String(tableData.currency ?? 'COP'),
+      shaderOpacity: Number(tableData.shader_opacity ?? fallbackJson?.shaderOpacity ?? 0.3),
+      currency: String(tableData.currency ?? fallbackJson?.currency ?? 'COP'),
       announcementText: String(
         tableData.announcement_text ??
+          fallbackJson?.announcementText ??
           'Envíos gratis a Colombia por compras superiores a $350.000 COP'
       ),
-      whatsappNumber: String(tableData.whatsapp_number ?? '573001234567'),
+      whatsappNumber: String(tableData.whatsapp_number ?? fallbackJson?.whatsappNumber ?? '573001234567'),
+      whatsappApiKey: (tableData as any).whatsapp_api_key || fallbackJson?.whatsappApiKey || '',
+      whatsappWebhookUrl: (tableData as any).whatsapp_webhook_url || fallbackJson?.whatsappWebhookUrl || '',
+      autoNotifyAdmin:
+        (tableData as any).auto_notify_admin !== undefined
+          ? Boolean((tableData as any).auto_notify_admin)
+          : fallbackJson?.autoNotifyAdmin ?? true,
     };
   }
 
-  // Respaldo 100% en Supabase PostgreSQL
-  const { data, error } = await client
-    .from('orders')
-    .select('shipping_address')
-    .eq('id', SETTINGS_RECORD_ID)
-    .maybeSingle();
-
-  if (error || !data?.shipping_address) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(data.shipping_address);
+  if (fallbackJson) {
     return {
-      shaderOpacity: Number(parsed.shaderOpacity ?? 0.3),
-      currency: String(parsed.currency ?? 'COP'),
+      shaderOpacity: Number(fallbackJson.shaderOpacity ?? 0.3),
+      currency: String(fallbackJson.currency ?? 'COP'),
       announcementText: String(
-        parsed.announcementText ??
+        fallbackJson.announcementText ??
           'Envíos gratis a Colombia por compras superiores a $350.000 COP'
       ),
-      whatsappNumber: String(parsed.whatsappNumber ?? '573001234567'),
+      whatsappNumber: String(fallbackJson.whatsappNumber ?? '573001234567'),
+      whatsappApiKey: String(fallbackJson.whatsappApiKey ?? ''),
+      whatsappWebhookUrl: String(fallbackJson.whatsappWebhookUrl ?? ''),
+      autoNotifyAdmin: fallbackJson.autoNotifyAdmin ?? true,
     };
-  } catch {
-    return null;
   }
+
+  return null;
 };
 
 export const saveCloudSettings = async (settings: StoreSettings): Promise<void> => {
@@ -468,28 +483,37 @@ export const saveCloudSettings = async (settings: StoreSettings): Promise<void> 
     currency: assertSafeString(settings.currency, 'Moneda') || 'COP',
     announcementText: assertSafeString(settings.announcementText, 'Texto de anuncio'),
     whatsappNumber: assertSafeString(settings.whatsappNumber, 'WhatsApp'),
+    whatsappApiKey: assertSafeString(settings.whatsappApiKey || '', 'WhatsApp API Key'),
+    whatsappWebhookUrl: assertSafeString(settings.whatsappWebhookUrl || '', 'WhatsApp Webhook'),
+    autoNotifyAdmin: settings.autoNotifyAdmin ?? true,
   };
 
-  // Intentar guardar en store_settings si existe
-  const { error: tableErr } = await client.from('store_settings').upsert({
-    id: 'default',
-    shader_opacity: safeSettings.shaderOpacity,
-    currency: safeSettings.currency,
-    announcement_text: safeSettings.announcementText,
-    whatsapp_number: safeSettings.whatsappNumber,
-    updated_at: new Date().toISOString(),
-  });
+  // 1. Guardar en store_settings
+  try {
+    await client.from('store_settings').upsert({
+      id: 'default',
+      shader_opacity: safeSettings.shaderOpacity,
+      currency: safeSettings.currency,
+      announcement_text: safeSettings.announcementText,
+      whatsapp_number: safeSettings.whatsappNumber,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Error al guardar en store_settings:', err);
+  }
 
-  if (!tableErr) return;
-
-  // Persistir en Supabase PostgreSQL
-  await client.from('orders').upsert({
-    id: SETTINGS_RECORD_ID,
-    customer_name: 'SYSTEM_CONFIG',
-    email: 'system@americanclothes.com',
-    total: 0,
-    status: 'ENTREGADO',
-    shipping_address: JSON.stringify(safeSettings),
-  });
+  // 2. Persistir siempre en el registro seguro en Supabase con todas las propiedades extendidas
+  try {
+    await client.from('orders').upsert({
+      id: SETTINGS_RECORD_ID,
+      customer_name: 'SYSTEM_CONFIG',
+      email: 'system@americanclothes.com',
+      total: 0,
+      status: 'ENTREGADO',
+      shipping_address: JSON.stringify(safeSettings),
+    });
+  } catch (err) {
+    console.warn('Error al guardar fallback de configuración:', err);
+  }
 };
 

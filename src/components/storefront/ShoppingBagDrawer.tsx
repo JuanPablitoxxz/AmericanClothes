@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthUser, CartItem, Product } from '../../types';
 import { formatCOP } from '../../lib/currency';
 import { detectSqlInjection, detectXss, validateEmail, validateSafeField } from '../../lib/security';
+import { generateAdminOrderMessage } from '../../lib/whatsappNotification';
 
 interface ShoppingBagDrawerProps {
   isOpen: boolean;
@@ -201,22 +202,42 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
             </div>
 
             <div className="space-y-2 pt-2">
+              <div className="p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-950 text-[11px] flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-700 text-base">
+                  notifications_active
+                </span>
+                <span>
+                  Alerta enviada automáticamente al WhatsApp del administrador.
+                </span>
+              </div>
+
               <a
                 href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(
-                  `*NUEVO PEDIDO AMERICAN CLOTHES*\n\n` +
-                  `*Orden:* ${confirmedOrder.id}\n` +
-                  `*Cliente:* ${confirmedOrder.name}\n` +
-                  `*Teléfono:* ${confirmedOrder.phone}\n` +
-                  `*Dirección:* ${confirmedOrder.address}\n\n` +
-                  `*Productos:*\n` +
-                  confirmedOrder.items.map((i) => `• ${i.product.name} (Talla: ${i.selectedSize}, Cant: ${i.quantity}) - ${formatCOP(i.product.price * i.quantity)}`).join('\n') +
-                  `\n\n*Total a Pagar:* ${formatCOP(confirmedOrder.total)}`
+                  generateAdminOrderMessage({
+                    id: confirmedOrder.id,
+                    customerName: confirmedOrder.name,
+                    email: customerEmail,
+                    phone: confirmedOrder.phone,
+                    shippingAddress: confirmedOrder.address,
+                    total: confirmedOrder.total,
+                    status: 'PROCESANDO',
+                    items: confirmedOrder.items.map((i) => ({
+                      productId: i.product.id,
+                      name: i.product.name,
+                      price: i.product.price,
+                      quantity: i.quantity,
+                      size: i.selectedSize,
+                      image: i.product.image,
+                    })),
+                    date: new Date().toISOString().substring(0, 16),
+                    timeAgo: 'Ahora',
+                  })
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-3.5 bg-[#25D366] text-white font-label-caps text-xs font-bold uppercase tracking-[2px] flex items-center justify-center gap-2 hover:bg-[#20ba5a] transition-colors shadow-sm"
               >
-                <span>📲 Notificar pedido por WhatsApp</span>
+                <span>📲 Abrir Chat de WhatsApp con el Atelier</span>
               </a>
 
               <button

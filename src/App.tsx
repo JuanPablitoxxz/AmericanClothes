@@ -31,6 +31,7 @@ import {
   updateProductStatus,
   updateProductStock,
 } from './lib/storeData';
+import { notifyAdminNewOrder } from './lib/whatsappNotification';
 import { getVerifiedCurrentUser, logoutUser } from './lib/auth';
 import { LiquidGoldShader } from './components/LiquidGoldShader';
 import { AuthModal, AuthView } from './components/auth/AuthModal';
@@ -151,6 +152,30 @@ export default function App() {
     return '573001234567';
   });
 
+  const [whatsappApiKey, setWhatsappApiKey] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).whatsappApiKey ?? '';
+    } catch {}
+    return '';
+  });
+
+  const [whatsappWebhookUrl, setWhatsappWebhookUrl] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).whatsappWebhookUrl ?? '';
+    } catch {}
+    return '';
+  });
+
+  const [autoNotifyAdmin, setAutoNotifyAdmin] = useState<boolean>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).autoNotifyAdmin ?? true;
+    } catch {}
+    return true;
+  });
+
   // 1. Verificar sesión autenticada y enlaces de recuperación de contraseña por correo
   useEffect(() => {
     let isMounted = true;
@@ -197,9 +222,25 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEYS.SETTINGS,
-      JSON.stringify({ shaderOpacity, currency, announcementText, whatsappNumber })
+      JSON.stringify({
+        shaderOpacity,
+        currency,
+        announcementText,
+        whatsappNumber,
+        whatsappApiKey,
+        whatsappWebhookUrl,
+        autoNotifyAdmin,
+      })
     );
-  }, [shaderOpacity, currency, announcementText, whatsappNumber]);
+  }, [
+    shaderOpacity,
+    currency,
+    announcementText,
+    whatsappNumber,
+    whatsappApiKey,
+    whatsappWebhookUrl,
+    autoNotifyAdmin,
+  ]);
 
   const handleSyncDatabase = async () => {
     try {
@@ -216,6 +257,9 @@ export default function App() {
         setCurrency(remoteSettings.currency);
         setAnnouncementText(remoteSettings.announcementText);
         setWhatsappNumber(remoteSettings.whatsappNumber);
+        if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
+        if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
+        if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
       }
       setDataError(null);
     } catch (error) {
@@ -252,6 +296,9 @@ export default function App() {
           setCurrency(remoteSettings.currency);
           setAnnouncementText(remoteSettings.announcementText);
           setWhatsappNumber(remoteSettings.whatsappNumber);
+          if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
+          if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
+          if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
         }
 
         setDataError(null);
@@ -597,6 +644,15 @@ export default function App() {
       setOrders((prev) => [newOrder, ...prev]);
       setCart([]);
       setDataError(null);
+
+      // Disparar notificación automática en segundo plano al WhatsApp del Administrador
+      notifyAdminNewOrder(newOrder, {
+        adminPhone: whatsappNumber,
+        apiKey: whatsappApiKey,
+        webhookUrl: whatsappWebhookUrl,
+        enabled: autoNotifyAdmin,
+      }).catch((err) => console.warn('Notificación WhatsApp background:', err));
+
       return newOrderId;
     } catch (error) {
       console.error('No fue posible registrar el pedido:', error);
@@ -1025,6 +1081,12 @@ export default function App() {
                   setAnnouncementText={setAnnouncementText}
                   whatsappNumber={whatsappNumber}
                   setWhatsappNumber={setWhatsappNumber}
+                  whatsappApiKey={whatsappApiKey}
+                  setWhatsappApiKey={setWhatsappApiKey}
+                  whatsappWebhookUrl={whatsappWebhookUrl}
+                  setWhatsappWebhookUrl={setWhatsappWebhookUrl}
+                  autoNotifyAdmin={autoNotifyAdmin}
+                  setAutoNotifyAdmin={setAutoNotifyAdmin}
                   isSupabaseConfigured={isSupabaseConfigured}
                   productsCount={products.length}
                   ordersCount={orders.length}

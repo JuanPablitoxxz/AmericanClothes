@@ -29,7 +29,6 @@ export interface StoredUserAccount {
 
 const AUTH_USERS_STORAGE_KEY = 'american_clothes_secure_accounts_v1';
 const ACTIVE_SESSION_STORAGE_KEY = 'american_clothes_active_session_v1';
-const RECOVERY_REQUEST_STORAGE_KEY = 'american_clothes_recovery_req_v1';
 const SYS_USER_PREFIX = '__SYS_USER__:';
 
 // Correos autorizados exclusivamente para rol administrativo
@@ -54,6 +53,33 @@ const getAccountsFromLocalCache = (): StoredUserAccount[] => {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+};
+
+/**
+ * Registra cada evento de inicio de sesión en la tabla public.login_logs de Supabase.
+ */
+const recordLoginEventInSupabase = async (params: {
+  userId?: string;
+  email: string;
+  name?: string;
+  role?: string;
+  status: 'EXITOSO' | 'FALLIDO' | 'BLOQUEADO_SQLI';
+}): Promise<void> => {
+  if (!isSupabaseConfigured || !supabase) return;
+  try {
+    const userAgent =
+      typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 250) : 'Node/Server';
+    await supabase.from('login_logs').insert({
+      user_id: params.userId || null,
+      email: params.email.toLowerCase().trim(),
+      name: params.name || null,
+      role: params.role || null,
+      status: params.status,
+      user_agent: userAgent,
+    });
+  } catch {
+    // Si la tabla login_logs aún no ha sido creada en el SQL Editor, no interrumpir el flujo
   }
 };
 
@@ -83,7 +109,7 @@ const upsertSupabaseAccount = async (account: StoredUserAccount): Promise<void> 
 
   if (!appUsersErr) return;
 
-  // 2. Persistencia garantizada 100% en Supabase PostgreSQL
+  // 2. Respaldo automático en Supabase PostgreSQL si aún no se ha ejecutado CREATE TABLE app_users
   const recordId = `${SYS_USER_PREFIX}${cleanEmail}`;
   await supabase.from('orders').upsert({
     id: recordId,
@@ -104,7 +130,7 @@ const upsertSupabaseAccount = async (account: StoredUserAccount): Promise<void> 
 const fetchSupabaseAccounts = async (): Promise<StoredUserAccount[] | null> => {
   if (!isSupabaseConfigured || !supabase) return null;
 
-  // 1. Intentar leer desde public.app_users si existe
+  // 1. Leer desde public.app_users si la tabla ya fue creada en Supabase
   const { data: appUsersData, error: appUsersErr } = await supabase
     .from('app_users')
     .select('*')
@@ -164,10 +190,9 @@ const fetchSupabaseAccounts = async (): Promise<StoredUserAccount[] | null> => {
 
 /**
  * Inicializa y sincroniza las cuentas base con hash criptográfico PBKDF2-SHA256 (100,000 iteraciones)
- * directamente en Supabase PostgreSQL para garantizar disponibilidad en la nube.
+ * directamente en Supabase PostgreSQL.
  */
 export const ensureSeededAccounts = async (): Promise<StoredUserAccount[]> => {
-  // Consultar primero Supabase Cloud
   const cloudAccounts = await fetchSupabaseAccounts();
 
   if (cloudAccounts && cloudAccounts.length > 0) {
@@ -194,7 +219,6 @@ export const ensureSeededAccounts = async (): Promise<StoredUserAccount[]> => {
     return cloudAccounts;
   }
 
-  // Si Supabase aún no tiene las cuentas iniciales, sembrarlas en Supabase Cloud
   const cached = getAccountsFromLocalCache();
   if (cached.length > 0) {
     await Promise.allSettled(cached.map((acc) => upsertSupabaseAccount(acc)));
@@ -323,15 +347,18 @@ export const getVerifiedCurrentUser = async (): Promise<AuthUser | null> => {
 };
 
 /**
- * Inicio de Sesión 100% vinculado a Supabase (PostgreSQL + Supabase Auth) con protección Anti-SQLi.
+ * Inicio de Sesión 100% vinculado a Supabase (PostgreSQL + Supabase Auth + Auditoría login_logs).
  */
 export const loginUser = async (
   emailInput: string,
   passwordInput: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
-  // 1. Verificar protección Anti-SQL Injection y Anti-XSS
   if (detectSqlInjection(emailInput) || detectSqlInjection(passwordInput)) {
     recordFailedAuthAttempt(emailInput || 'sqli');
+    await recordLoginEventInSupabase({
+      email: emailInput || 'sqli_attempt',
+      status: 'BLOQUEADO_SQLI',
+    });
     return {
       success: false,
       error:
@@ -347,14 +374,12 @@ export const loginUser = async (
     };
   }
 
-  // 2. Validar formato de correo electrónico
   const emailValidation = validateEmail(emailInput);
   if (!emailValidation.valid) {
     return { success: false, error: emailValidation.error };
   }
   const cleanEmail = emailValidation.sanitized;
 
-  // 3. Verificar límite de intentos (Anti-Brute Force)
   const rateLimit = checkAuthRateLimit(cleanEmail);
   if (!rateLimit.allowed) {
     return {
@@ -365,6 +390,7 @@ export const loginUser = async (
 
   if (!passwordInput || passwordInput.length < 4) {
     const fail = recordFailedAuthAttempt(cleanEmail);
+    await recordLoginEventInSupabase({ email: cleanEmail, status: 'FALLIDO' });
     return {
       success: false,
       error: fail.locked
@@ -373,7 +399,6 @@ export const loginUser = async (
     };
   }
 
-  // 4. Consultar cuentas directamente desde Supabase Cloud
   const accounts = await ensureSeededAccounts();
   const cloudAccount = accounts.find((acc) => acc.email.toLowerCase() === cleanEmail);
 
@@ -386,25 +411,19 @@ export const loginUser = async (
 
     if (isPasswordValid) {
       clearAuthRateLimit(cleanEmail);
-
-      // Sincronizar sesión nativa en Supabase Auth
-      if (isSupabaseConfigured && supabase) {
-        try {
-          await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: passwordInput,
-          });
-        } catch {
-          // Continuar con sesión verificada en Supabase PostgreSQL
-        }
-      }
+      await recordLoginEventInSupabase({
+        userId: cloudAccount.id,
+        email: cleanEmail,
+        name: cloudAccount.name,
+        role: cloudAccount.role,
+        status: 'EXITOSO',
+      });
 
       const signedUser = await createSignedSession(cloudAccount);
       return { success: true, user: signedUser };
     }
   }
 
-  // 5. Verificar en Supabase Auth directo y sincronizar con tabla en Supabase PostgreSQL
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -434,6 +453,14 @@ export const loginUser = async (
         };
 
         await upsertSupabaseAccount(syncedAccount);
+        await recordLoginEventInSupabase({
+          userId: syncedAccount.id,
+          email: cleanEmail,
+          name: syncedAccount.name,
+          role: syncedAccount.role,
+          status: 'EXITOSO',
+        });
+
         const updatedAccounts = [
           ...accounts.filter((a) => a.email.toLowerCase() !== cleanEmail),
           syncedAccount,
@@ -448,8 +475,8 @@ export const loginUser = async (
     }
   }
 
-  // 6. Registrar intento fallido
   const failStatus = recordFailedAuthAttempt(cleanEmail);
+  await recordLoginEventInSupabase({ email: cleanEmail, status: 'FALLIDO' });
   return {
     success: false,
     error: failStatus.locked
@@ -467,6 +494,7 @@ export const registerUser = async (params: {
   phone?: string;
   password: string;
   confirmPassword: string;
+  skipSupabaseAuthEmail?: boolean;
 }): Promise<{ success: boolean; user?: AuthUser; error?: string; message?: string }> => {
   const nameVal = validateSafeField(params.name, 'Nombre Completo', {
     required: true,
@@ -512,7 +540,6 @@ export const registerUser = async (params: {
     };
   }
 
-  // Verificar en Supabase Cloud que el correo no exista
   const accounts = await ensureSeededAccounts();
   if (accounts.some((acc) => acc.email.toLowerCase() === cleanEmail)) {
     return {
@@ -525,8 +552,7 @@ export const registerUser = async (params: {
   const passwordHash = await hashPasswordPBKDF2(params.password, salt);
   let userId = `usr-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-  // Registrar en Supabase Auth
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured && supabase && !params.skipSupabaseAuthEmail) {
     try {
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
@@ -560,8 +586,14 @@ export const registerUser = async (params: {
     createdAt: new Date().toISOString(),
   };
 
-  // Guardar inmediatamente en Supabase PostgreSQL
   await upsertSupabaseAccount(newAccount);
+  await recordLoginEventInSupabase({
+    userId: newAccount.id,
+    email: cleanEmail,
+    name: newAccount.name,
+    role: newAccount.role,
+    status: 'EXITOSO',
+  });
 
   const nextAccounts = [...accounts, newAccount];
   saveAccountsToLocalCache(nextAccounts);
@@ -575,10 +607,12 @@ export const registerUser = async (params: {
 };
 
 /**
- * Solicita recuperación de contraseña por correo electrónico verificando la cuenta en Supabase.
+ * Solicita recuperación de contraseña por correo electrónico verificando la cuenta en Supabase
+ * y manejando errores reales de envío de Supabase Auth.
  */
 export const requestPasswordRecovery = async (
-  emailInput: string
+  emailInput: string,
+  options?: { dryRun?: boolean }
 ): Promise<{
   success: boolean;
   error?: string;
@@ -598,38 +632,81 @@ export const requestPasswordRecovery = async (
     };
   }
 
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const redirectUrl =
-        typeof window !== 'undefined'
-          ? `${window.location.origin}/?recovery=true&email=${encodeURIComponent(cleanEmail)}`
-          : undefined;
+  // Verificar que el correo esté registrado en nuestra base de datos de Supabase
+  const accounts = await ensureSeededAccounts();
+  const existingAccount = accounts.find((acc) => acc.email.toLowerCase() === cleanEmail);
 
-      await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: redirectUrl,
-      });
-    } catch (err) {
-      console.warn('Aviso al solicitar correo de recuperación en Supabase:', err);
-    }
+  if (!existingAccount) {
+    return {
+      success: false,
+      error: 'No encontramos ninguna cuenta registrada con este correo electrónico.',
+    };
   }
 
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(
-        RECOVERY_REQUEST_STORAGE_KEY,
-        JSON.stringify({
+  if (options?.dryRun) {
+    return {
+      success: true,
+      message: `Validación de recuperación verificada para ${cleanEmail}.`,
+    };
+  }
+
+  if (isSupabaseConfigured && supabase) {
+    const redirectUrl =
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+
+    // Si la cuenta se creó cuando el servidor SMTP de Supabase estaba en rate-limit (id empieza por usr-),
+    // asegurarnos de registrarla primero en auth.users antes de pedir resetPasswordForEmail
+    if (existingAccount.id.startsWith('usr-')) {
+      try {
+        const tempPass = `Ac#${existingAccount.salt.slice(0, 10)}9*`;
+        const { data: signUpData } = await supabase.auth.signUp({
           email: cleanEmail,
-          expiresAt: Date.now() + 15 * 60 * 1000,
-        })
-      );
+          password: tempPass,
+          options: {
+            data: {
+              full_name: existingAccount.name,
+              phone: existingAccount.phone || '',
+              role: existingAccount.role,
+            },
+            emailRedirectTo: redirectUrl,
+          },
+        });
+        if (signUpData?.user?.id) {
+          existingAccount.id = signUpData.user.id;
+          await upsertSupabaseAccount(existingAccount);
+        }
+      } catch {
+        // continuar a resetPasswordForEmail
+      }
     }
-  } catch {
-    // ignore
+
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      if (
+        error.status === 429 ||
+        (error as any).code === 'over_email_send_rate_limit' ||
+        error.message.toLowerCase().includes('rate limit')
+      ) {
+        return {
+          success: false,
+          error:
+            'El servidor de correo gratuito de Supabase alcanzó su límite (máximo 2 correos por hora). Por favor espera unos minutos para volver a enviar o amplía el límite en tu panel de Supabase (Authentication > Rate Limits).',
+        };
+      }
+
+      return {
+        success: false,
+        error: `No fue posible enviar el correo de recuperación desde Supabase: ${error.message}`,
+      };
+    }
   }
 
   return {
     success: true,
-    message: `Se han enviado las instrucciones de recuperación a ${cleanEmail} vía Supabase Auth. Revisa tu bandeja de entrada o spam.`,
+    message: `Hemos enviado un enlace de recuperación a ${cleanEmail}. Haz clic en el enlace dentro de tu correo para definir tu nueva contraseña.`,
   };
 };
 
@@ -641,7 +718,19 @@ export const resetUserPassword = async (params: {
   newPassword: string;
   confirmPassword: string;
 }): Promise<{ success: boolean; error?: string; message?: string }> => {
-  const emailVal = validateEmail(params.email);
+  let targetEmail = params.email;
+
+  // Si viene de sesión de recuperación de Supabase Auth y el campo email está vacío, obtenerlo de la sesión
+  if (!targetEmail && isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email) {
+        targetEmail = data.user.email;
+      }
+    } catch {}
+  }
+
+  const emailVal = validateEmail(targetEmail);
   if (!emailVal.valid) {
     return { success: false, error: emailVal.error };
   }
@@ -693,22 +782,13 @@ export const resetUserPassword = async (params: {
     accounts.push(updatedAccount);
   }
 
-  // Persistir nuevo hash PBKDF2-SHA256 directamente en Supabase PostgreSQL
   await upsertSupabaseAccount(updatedAccount);
   saveAccountsToLocalCache(accounts);
-
   clearAuthRateLimit(cleanEmail);
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(RECOVERY_REQUEST_STORAGE_KEY);
-    }
-  } catch {
-    // ignore
-  }
 
   return {
     success: true,
-    message: 'Contraseña actualizada y sincronizada en Supabase con cifrado PBKDF2-SHA256.',
+    message: 'Contraseña actualizada y sincronizada en Supabase. Ya puedes iniciar sesión.',
   };
 };
 

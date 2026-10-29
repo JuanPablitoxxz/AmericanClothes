@@ -6,6 +6,7 @@ import {
   requestPasswordRecovery,
   resetUserPassword,
 } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 import {
   detectSqlInjection,
   detectXss,
@@ -50,6 +51,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setRecoverySent(false);
       setPassword('');
       setConfirmPassword('');
+
+      if (initialView === 'reset-password' && !initialEmail && supabase) {
+        supabase.auth.getUser().then(({ data }) => {
+          if (data?.user?.email) {
+            setEmail(data.user.email);
+          }
+        });
+      }
     }
   }, [isOpen, initialView, initialEmail]);
 
@@ -558,22 +567,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
               </form>
 
-              {recoverySent && (
-                <div className="p-4 bg-[#EFECE7] border border-black/15 space-y-3 text-xs">
-                  <p className="text-[#1A1A1A] font-medium">
-                    ¿Deseas configurar tu nueva contraseña ahora mismo?
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => switchView('reset-password')}
-                    className="w-full py-2.5 bg-[#1A1A1A] text-[#F9F8F6] font-label-caps text-[10px] font-bold uppercase tracking-[2px] hover:bg-[#333333]"
-                  >
-                    Restablecer Contraseña Ahora
-                  </button>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-black/10 flex justify-between items-center text-xs">
+              <div className="pt-2 border-t border-black/10 flex justify-start items-center text-xs">
                 <button
                   type="button"
                   onClick={() => switchView('login')}
@@ -581,13 +575,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 >
                   <span className="material-symbols-outlined text-sm">arrow_back</span>
                   Volver a Iniciar Sesión
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchView('reset-password')}
-                  className="text-[#666666] hover:text-[#1A1A1A] underline"
-                >
-                  Ya tengo enlace de correo
                 </button>
               </div>
             </div>

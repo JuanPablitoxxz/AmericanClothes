@@ -168,7 +168,7 @@ async function runSecurityTests() {
   const recoveryRes = await requestPasswordRecovery("usuario@correo.com' UNION SELECT * FROM users--");
   assert.equal(recoveryRes.success, false, 'La recuperación con SQLi debe ser rechazada');
 
-  const validRecovery = await requestPasswordRecovery('cliente@americanclothes.com');
+  const validRecovery = await requestPasswordRecovery('cliente@americanclothes.com', { dryRun: true });
   assert.equal(validRecovery.success, true, 'La solicitud de recuperación legítima debe procesarse');
 
   const resetSqlAttempt = await resetUserPassword({

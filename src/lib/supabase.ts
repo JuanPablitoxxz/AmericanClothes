@@ -27,11 +27,57 @@ export const isSupabaseConfigured = Boolean(
     !supabaseUrl.includes('tu-proyecto')
 );
 
+// Capturar enlace de recuperación de contraseña ANTES de que createClient procese y limpie el hash de la URL
+let initialUrlHasRecovery = false;
+let initialRecoveryEmail = '';
+
+if (typeof window !== 'undefined') {
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  if (hash.includes('type=recovery') || search.includes('recovery=true')) {
+    initialUrlHasRecovery = true;
+  }
+  const params = new URLSearchParams(search);
+  const emailFromQuery = params.get('email');
+  if (emailFromQuery) {
+    initialRecoveryEmail = emailFromQuery;
+  }
+}
+
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        detectSessionInUrl: true,
       },
     })
   : null;
+
+const recoveryListeners = new Set<(email: string) => void>();
+
+export const onPasswordRecoveryDetected = (cb: (email: string) => void) => {
+  recoveryListeners.add(cb);
+  if (initialUrlHasRecovery) {
+    cb(initialRecoveryEmail);
+  }
+  return () => {
+    recoveryListeners.delete(cb);
+  };
+};
+
+export const clearPasswordRecoveryFlag = () => {
+  initialUrlHasRecovery = false;
+};
+
+if (supabase && typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' || (initialUrlHasRecovery && session?.user?.email)) {
+      initialUrlHasRecovery = true;
+      if (session?.user?.email) {
+        initialRecoveryEmail = session.user.email;
+      }
+      recoveryListeners.forEach((cb) => cb(initialRecoveryEmail));
+    }
+  });
+}

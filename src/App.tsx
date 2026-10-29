@@ -10,7 +10,12 @@ import {
   AuthUser,
 } from './types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS } from './data/mockData';
-import { isSupabaseConfigured, supabase } from './lib/supabase';
+import {
+  clearPasswordRecoveryFlag,
+  isSupabaseConfigured,
+  onPasswordRecoveryDetected,
+  supabase,
+} from './lib/supabase';
 import {
   createOrder,
   deleteProduct,
@@ -165,38 +170,25 @@ export default function App() {
       if (isMounted && verified) {
         setCurrentUser(verified);
       }
-
-      // Detectar si el usuario viene de un enlace de recuperación de contraseña en su correo
-      const params = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const isRecoveryLink =
-        params.get('recovery') === 'true' || hashParams.get('type') === 'recovery';
-
-      if (isRecoveryLink && isMounted) {
-        const emailParam = params.get('email') || '';
-        setRecoveryEmail(emailParam);
-        setAuthModalView('reset-password');
-        setIsAuthModalOpen(true);
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
     };
 
     initAuth();
 
-    // Escuchar evento PASSWORD_RECOVERY de Supabase Auth
-    const authListener = supabase?.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        if (session?.user?.email) {
-          setRecoveryEmail(session.user.email);
-        }
-        setAuthModalView('reset-password');
-        setIsAuthModalOpen(true);
+    // Detectar enlace de recuperación desde el correo electrónico (hash #type=recovery o evento PASSWORD_RECOVERY)
+    const unsubscribeRecovery = onPasswordRecoveryDetected((emailFromRecovery) => {
+      if (!isMounted) return;
+      if (emailFromRecovery) {
+        setRecoveryEmail(emailFromRecovery);
       }
+      setAuthModalView('reset-password');
+      setIsAuthModalOpen(true);
+      clearPasswordRecoveryFlag();
+      window.history.replaceState({}, document.title, window.location.pathname);
     });
 
     return () => {
       isMounted = false;
-      authListener?.data.subscription.unsubscribe();
+      unsubscribeRecovery();
     };
   }, []);
 

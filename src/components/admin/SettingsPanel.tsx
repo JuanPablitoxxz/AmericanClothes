@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { saveCloudSettings } from '../../lib/storeData';
 import { formatPhoneForWhatsApp, sendCallMeBotMessage, sendWebhookNotification } from '../../lib/whatsappNotification';
+import { sendTelegramMessage } from '../../lib/telegramNotification';
 import { Order } from '../../types';
 
 interface SettingsPanelProps {
@@ -18,6 +19,12 @@ interface SettingsPanelProps {
   setWhatsappWebhookUrl?: (val: string) => void;
   autoNotifyAdmin?: boolean;
   setAutoNotifyAdmin?: (val: boolean) => void;
+  telegramBotToken?: string;
+  setTelegramBotToken?: (val: string) => void;
+  telegramChatId?: string;
+  setTelegramChatId?: (val: string) => void;
+  autoNotifyTelegram?: boolean;
+  setAutoNotifyTelegram?: (val: boolean) => void;
   isSupabaseConfigured: boolean;
   productsCount: number;
   ordersCount: number;
@@ -39,6 +46,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setWhatsappWebhookUrl,
   autoNotifyAdmin = true,
   setAutoNotifyAdmin,
+  telegramBotToken = '',
+  setTelegramBotToken,
+  telegramChatId = '',
+  setTelegramChatId,
+  autoNotifyTelegram = true,
+  setAutoNotifyTelegram,
   isSupabaseConfigured,
   productsCount,
   ordersCount,
@@ -46,6 +59,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [savedMessage, setSavedMessage] = useState(false);
   const [testStatus, setTestStatus] = useState<{
+    loading: boolean;
+    message: string | null;
+    isError: boolean;
+  }>({
+    loading: false,
+    message: null,
+    isError: false,
+  });
+
+  const [telegramTestStatus, setTelegramTestStatus] = useState<{
     loading: boolean;
     message: string | null;
     isError: boolean;
@@ -67,6 +90,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           whatsappApiKey,
           whatsappWebhookUrl,
           autoNotifyAdmin,
+          telegramBotToken,
+          telegramChatId,
+          autoNotifyTelegram,
         });
       } catch (err) {
         console.error('Error al guardar ajustes en Supabase:', err);
@@ -74,6 +100,86 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     }
     setSavedMessage(true);
     setTimeout(() => setSavedMessage(false), 2000);
+  };
+
+  const handleTestTelegramNotification = async () => {
+    if (!telegramBotToken.trim()) {
+      setTelegramTestStatus({
+        loading: false,
+        message: 'Por favor ingresa primero el Bot Token de Telegram (ej. 123456789:ABCdef...).',
+        isError: true,
+      });
+      return;
+    }
+
+    if (!telegramChatId.trim()) {
+      setTelegramTestStatus({
+        loading: false,
+        message: 'Por favor ingresa tu Chat ID numérico de Telegram (ej. 987654321).',
+        isError: true,
+      });
+      return;
+    }
+
+    setTelegramTestStatus({
+      loading: true,
+      message: 'Enviando alerta de prueba a Telegram...',
+      isError: false,
+    });
+
+    const mockOrder: Order = {
+      id: `#ORD-TEST-${Math.floor(1000 + Math.random() * 9000)}`,
+      customerName: 'Cliente Simulado American Clothes',
+      email: 'cliente@americanclothes.com',
+      phone: '+57 322 412 7814',
+      timeAgo: 'Ahora mismo',
+      date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      total: 350000,
+      status: 'PROCESANDO',
+      shippingAddress: 'Cra 15 # 85-30, Bogotá D.C.',
+      items: [
+        {
+          productId: 'test-item-1',
+          name: 'Hoodie Boxy Heavyweight Noir',
+          price: 180000,
+          quantity: 1,
+          size: 'M',
+          image: '',
+        },
+        {
+          productId: 'test-item-2',
+          name: 'Pantalón Cargo Vintage Black',
+          price: 170000,
+          quantity: 1,
+          size: 'L',
+          image: '',
+        },
+      ],
+    };
+
+    const testMsg =
+      `🚨 <b>¡PRUEBA EXITOSA DE AMERICAN CLOTHES!</b>\n\n` +
+      `¡Tu bot de Telegram está 100% activo y conectado en segundo plano!\n\n` +
+      `📋 <b>Orden Simulada:</b> <code>${mockOrder.id}</code>\n` +
+      `💰 <b>Total a Cobrar:</b> <b>$ 350.000 COP</b>\n` +
+      `⏳ <b>Estado:</b> PROCESANDO (Stock reservado por 24 horas)\n\n` +
+      `👤 <b>DATOS DEL CLIENTE:</b>\n` +
+      `• <b>Nombre:</b> ${mockOrder.customerName}\n` +
+      `• <b>Teléfono:</b> ${mockOrder.phone}\n` +
+      `• <b>WhatsApp del Cliente:</b> <a href="https://wa.me/573224127814">👉 Tocar aquí para chatear por WhatsApp</a>\n` +
+      `• <b>Dirección:</b> ${mockOrder.shippingAddress}\n\n` +
+      `🛍️ <b>PRENDAS SOLICITADAS:</b>\n` +
+      `  1. <b>Hoodie Boxy Heavyweight Noir</b> (Talla M x 1) - $ 180.000 COP\n` +
+      `  2. <b>Pantalón Cargo Vintage Black</b> (Talla L x 1) - $ 170.000 COP\n\n` +
+      `<i>Cada vez que un cliente realice un pedido, recibirás instantáneamente una alerta igual a esta con el enlace a su WhatsApp.</i>`;
+
+    const res = await sendTelegramMessage(telegramBotToken, telegramChatId, testMsg);
+
+    setTelegramTestStatus({
+      loading: false,
+      message: res.message,
+      isError: !res.success,
+    });
   };
 
   const handleTestWhatsAppNotification = async () => {
@@ -212,6 +318,121 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"
               />
             </div>
+          </div>
+        </div>
+
+        {/* SECCIÓN PRINCIPAL: NOTIFICACIONES AUTOMÁTICAS POR TELEGRAM (100% SILENCIOSO & OFICIAL) */}
+        <div className="bg-[#EFECE7] border-2 border-[#0088cc]/30 p-5 sm:p-6 space-y-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/10 pb-3">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="material-symbols-outlined text-[#0088cc] text-2xl">
+                  send
+                </span>
+                <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal">
+                  Notificaciones Automáticas por Telegram
+                </h3>
+                <span className="bg-[#0088cc]/10 text-[#0088cc] text-[9px] font-mono font-bold px-2 py-0.5 border border-[#0088cc]/30 tracking-wider">
+                  ★ RECOMENDADO / 100% OFICIAL & GRATIS
+                </span>
+              </div>
+              <p className="text-[11px] text-[#555555] mt-1">
+                Recibe al instante en tu celular una alerta silenciosa cada vez que un cliente compre. Incluye el detalle de prendas, dirección y un enlace directo para abrir el chat de WhatsApp del cliente con un solo toque.
+              </p>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer self-start sm:self-center bg-[#F9F8F6] px-3 py-1.5 border border-black/10">
+              <input
+                type="checkbox"
+                checked={autoNotifyTelegram}
+                onChange={(e) => setAutoNotifyTelegram?.(e.target.checked)}
+                className="accent-[#0088cc] w-4 h-4 cursor-pointer"
+              />
+              <span className="font-label-caps text-[10px] tracking-[1.5px] uppercase font-bold text-[#1A1A1A]">
+                Activar Alertas Telegram
+              </span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Bot Token de Telegram (de @BotFather)
+              </label>
+              <input
+                type="text"
+                value={telegramBotToken}
+                onChange={(e) => setTelegramBotToken?.(e.target.value)}
+                placeholder="ej: 7924856123:AAFOk9... (Token HTTP API)"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#0088cc] outline-none font-mono"
+              />
+              <span className="text-[10px] text-[#777777] mt-1 block">
+                Token que te entrega el bot oficial <strong>@BotFather</strong>.
+              </span>
+            </div>
+
+            <div>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Tu Chat ID de Telegram (de @userinfobot)
+              </label>
+              <input
+                type="text"
+                value={telegramChatId}
+                onChange={(e) => setTelegramChatId?.(e.target.value)}
+                placeholder="ej: 987654321 (solo números)"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#0088cc] outline-none font-mono"
+              />
+              <span className="text-[10px] text-[#777777] mt-1 block">
+                Tu identificador personal obtenido en <strong>@userinfobot</strong>.
+              </span>
+            </div>
+          </div>
+
+          {/* Guía en 4 pasos para configurar Telegram en 1 minuto */}
+          <div className="bg-[#F9F8F6] border border-[#0088cc]/30 p-3.5 space-y-2.5 text-xs">
+            <p className="font-bold text-[#1A1A1A] flex items-center gap-1.5 font-label-caps text-[10px] tracking-[1px]">
+              <span className="material-symbols-outlined text-sm text-[#0088cc]">help</span>
+              Configura tu Bot de Telegram en 1 Minuto (Gratis de por vida)
+            </p>
+            <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-[#555555] leading-relaxed">
+              <li>
+                <strong>Crear el Bot:</strong> Abre en Telegram <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-[#0088cc] font-bold underline">@BotFather</a>, dale a <em>Iniciar</em> y escribe <code className="bg-[#EFECE7] px-1.5 py-0.5 font-mono text-[#1A1A1A]">/newbot</code>. Dale un nombre (ej: <em>Alertas American Clothes</em>) y un usuario único que termine en bot (ej: <em>american_clothes_order_bot</em>). Te devolverá el <strong>HTTP API Token</strong>; cópialo y pégalo arriba.
+              </li>
+              <li>
+                <strong>Obtener tu Chat ID:</strong> Abre en Telegram <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-[#0088cc] font-bold underline">@userinfobot</a>, dale a <em>Iniciar</em> y copia el número que aparece en <strong>Id</strong> (ej. <code>123456789</code>). Pégalo en la casilla de Chat ID.
+              </li>
+              <li>
+                <strong>Iniciar tu bot:</strong> Entra al chat de tu bot recién creado en Telegram y presiona el botón <strong>INICIAR / START</strong> (paso indispensable para que pueda escribirte).
+              </li>
+              <li>
+                <strong>Probar:</strong> Pulsa el botón <strong>Probar Notificación en Telegram</strong> aquí abajo. Te llegará al instante la alerta con el diseño completo del pedido.
+              </li>
+            </ol>
+          </div>
+
+          {/* Botón de Prueba Telegram y Feedback */}
+          <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-black/10">
+            <button
+              type="button"
+              disabled={telegramTestStatus.loading}
+              onClick={handleTestTelegramNotification}
+              className="px-4 py-2.5 bg-[#0088cc] hover:bg-[#0077b5] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base">send</span>
+              {telegramTestStatus.loading ? 'Enviando...' : 'Probar Notificación en Telegram'}
+            </button>
+
+            {telegramTestStatus.message && (
+              <span
+                className={`text-xs p-2 border font-sans-body max-w-md ${
+                  telegramTestStatus.isError
+                    ? 'bg-red-50 text-red-800 border-red-300'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                }`}
+              >
+                {telegramTestStatus.message}
+              </span>
+            )}
           </div>
         </div>
 

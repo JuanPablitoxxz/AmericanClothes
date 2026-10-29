@@ -32,6 +32,7 @@ import {
   updateProductStock,
 } from './lib/storeData';
 import { notifyAdminNewOrder } from './lib/whatsappNotification';
+import { notifyTelegramNewOrder } from './lib/telegramNotification';
 import { getVerifiedCurrentUser, logoutUser } from './lib/auth';
 import { LiquidGoldShader } from './components/LiquidGoldShader';
 import { AuthModal, AuthView } from './components/auth/AuthModal';
@@ -176,6 +177,30 @@ export default function App() {
     return true;
   });
 
+  const [telegramBotToken, setTelegramBotToken] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).telegramBotToken ?? '';
+    } catch {}
+    return '';
+  });
+
+  const [telegramChatId, setTelegramChatId] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).telegramChatId ?? '';
+    } catch {}
+    return '';
+  });
+
+  const [autoNotifyTelegram, setAutoNotifyTelegram] = useState<boolean>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).autoNotifyTelegram ?? true;
+    } catch {}
+    return true;
+  });
+
   // 1. Verificar sesión autenticada y enlaces de recuperación de contraseña por correo
   useEffect(() => {
     let isMounted = true;
@@ -230,6 +255,9 @@ export default function App() {
         whatsappApiKey,
         whatsappWebhookUrl,
         autoNotifyAdmin,
+        telegramBotToken,
+        telegramChatId,
+        autoNotifyTelegram,
       })
     );
   }, [
@@ -240,6 +268,9 @@ export default function App() {
     whatsappApiKey,
     whatsappWebhookUrl,
     autoNotifyAdmin,
+    telegramBotToken,
+    telegramChatId,
+    autoNotifyTelegram,
   ]);
 
   const handleSyncDatabase = async () => {
@@ -260,6 +291,9 @@ export default function App() {
         if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
         if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
         if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
+        if (remoteSettings.telegramBotToken !== undefined) setTelegramBotToken(remoteSettings.telegramBotToken);
+        if (remoteSettings.telegramChatId !== undefined) setTelegramChatId(remoteSettings.telegramChatId);
+        if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
       }
       setDataError(null);
     } catch (error) {
@@ -299,6 +333,9 @@ export default function App() {
           if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
           if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
           if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
+          if (remoteSettings.telegramBotToken !== undefined) setTelegramBotToken(remoteSettings.telegramBotToken);
+          if (remoteSettings.telegramChatId !== undefined) setTelegramChatId(remoteSettings.telegramChatId);
+          if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
         }
 
         setDataError(null);
@@ -652,6 +689,13 @@ export default function App() {
         webhookUrl: whatsappWebhookUrl,
         enabled: autoNotifyAdmin,
       }).catch((err) => console.warn('Notificación WhatsApp background:', err));
+
+      // Disparar notificación automática en segundo plano a Telegram del Administrador
+      notifyTelegramNewOrder(newOrder, {
+        botToken: telegramBotToken,
+        chatId: telegramChatId,
+        enabled: autoNotifyTelegram,
+      }).catch((err) => console.warn('Notificación Telegram background:', err));
 
       return newOrderId;
     } catch (error) {
@@ -1087,6 +1131,12 @@ export default function App() {
                   setWhatsappWebhookUrl={setWhatsappWebhookUrl}
                   autoNotifyAdmin={autoNotifyAdmin}
                   setAutoNotifyAdmin={setAutoNotifyAdmin}
+                  telegramBotToken={telegramBotToken}
+                  setTelegramBotToken={setTelegramBotToken}
+                  telegramChatId={telegramChatId}
+                  setTelegramChatId={setTelegramChatId}
+                  autoNotifyTelegram={autoNotifyTelegram}
+                  setAutoNotifyTelegram={setAutoNotifyTelegram}
                   isSupabaseConfigured={isSupabaseConfigured}
                   productsCount={products.length}
                   ordersCount={orders.length}

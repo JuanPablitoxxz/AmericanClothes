@@ -411,6 +411,9 @@ export interface StoreSettings {
   whatsappApiKey?: string;
   whatsappWebhookUrl?: string;
   autoNotifyAdmin?: boolean;
+  telegramBotToken?: string;
+  telegramChatId?: string;
+  autoNotifyTelegram?: boolean;
 }
 
 const SETTINGS_RECORD_ID = '__SYS_SETTINGS__';
@@ -455,6 +458,9 @@ export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
         (tableData as any).auto_notify_admin !== undefined
           ? Boolean((tableData as any).auto_notify_admin)
           : fallbackJson?.autoNotifyAdmin ?? true,
+      telegramBotToken: fallbackJson?.telegramBotToken || '',
+      telegramChatId: fallbackJson?.telegramChatId || '',
+      autoNotifyTelegram: fallbackJson?.autoNotifyTelegram ?? true,
     };
   }
 
@@ -470,6 +476,9 @@ export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
       whatsappApiKey: String(fallbackJson.whatsappApiKey ?? ''),
       whatsappWebhookUrl: String(fallbackJson.whatsappWebhookUrl ?? ''),
       autoNotifyAdmin: fallbackJson.autoNotifyAdmin ?? true,
+      telegramBotToken: String(fallbackJson.telegramBotToken ?? ''),
+      telegramChatId: String(fallbackJson.telegramChatId ?? ''),
+      autoNotifyTelegram: fallbackJson.autoNotifyTelegram ?? true,
     };
   }
 
@@ -486,6 +495,9 @@ export const saveCloudSettings = async (settings: StoreSettings): Promise<void> 
     whatsappApiKey: assertSafeString(settings.whatsappApiKey || '', 'WhatsApp API Key'),
     whatsappWebhookUrl: assertSafeString(settings.whatsappWebhookUrl || '', 'WhatsApp Webhook'),
     autoNotifyAdmin: settings.autoNotifyAdmin ?? true,
+    telegramBotToken: assertSafeString(settings.telegramBotToken || '', 'Telegram Bot Token'),
+    telegramChatId: assertSafeString(settings.telegramChatId || '', 'Telegram Chat ID'),
+    autoNotifyTelegram: settings.autoNotifyTelegram ?? true,
   };
 
   // 1. Guardar en store_settings

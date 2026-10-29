@@ -700,8 +700,8 @@ export default function App() {
         </div>
       ) : (
         /* PROTECTED ADMIN DASHBOARD MODE (ONLY ACCESSIBLE BY VERIFIED ADMIN) */
-        <div className="min-h-screen flex">
-          {/* Fixed Left Sidebar */}
+        <div className="min-h-screen bg-[#F9F8F6] text-[#1A1A1A] flex flex-col lg:flex-row relative z-10">
+          {/* Responsive Sidebar (Mobile/Tablet Bar + Drawer & Desktop Fixed Left Sidebar) */}
           <AdminSidebar
             activeTab={adminTab}
             currentUser={currentUser}
@@ -712,68 +712,71 @@ export default function App() {
             ordersCount={orders.length}
           />
 
-          {/* Admin Top Notification Bar */}
-          <AdminTopBar
-            lowStockCount={lowStockCount}
-            ordersTodayCount={orders.length}
-          />
+          {/* Right Admin Workspace Column */}
+          <div className="flex-1 flex flex-col min-h-screen lg:pl-[280px] w-full min-w-0">
+            {/* Admin Top Notification Bar */}
+            <AdminTopBar
+              lowStockCount={lowStockCount}
+              ordersTodayCount={orders.length}
+            />
 
-          {/* Admin Main Workspace */}
-          <main className="ml-0 md:ml-[280px] flex-1 p-6 md:p-10 mt-[36px] overflow-y-auto">
-            {adminTab === 'dashboard' && (
-              <DashboardOverview
-                products={products}
-                orders={orders}
-                onOpenNewProduct={() => {
-                  setEditingProduct(null);
-                  setIsProductFormOpen(true);
-                }}
-                onEditProduct={(p) => {
-                  setEditingProduct(p);
-                  setIsProductFormOpen(true);
-                }}
-                onViewAllOrders={() => setAdminTab('orders')}
-              />
-            )}
+            {/* Centered Admin Main Workspace */}
+            <main className="flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 md:px-10 py-6 sm:py-8 md:py-10">
+              {adminTab === 'dashboard' && (
+                <DashboardOverview
+                  products={products}
+                  orders={orders}
+                  onOpenNewProduct={() => {
+                    setEditingProduct(null);
+                    setIsProductFormOpen(true);
+                  }}
+                  onEditProduct={(p) => {
+                    setEditingProduct(p);
+                    setIsProductFormOpen(true);
+                  }}
+                  onViewAllOrders={() => setAdminTab('orders')}
+                />
+              )}
 
-            {adminTab === 'products' && (
-              <ProductManagement
-                products={products}
-                onOpenNewProduct={() => {
-                  setEditingProduct(null);
-                  setIsProductFormOpen(true);
-                }}
-                onEditProduct={(p) => {
-                  setEditingProduct(p);
-                  setIsProductFormOpen(true);
-                }}
-                onDeleteProduct={handleDeleteProduct}
-                onToggleStatus={handleToggleProductStatus}
-              />
-            )}
+              {adminTab === 'products' && (
+                <ProductManagement
+                  products={products}
+                  onOpenNewProduct={() => {
+                    setEditingProduct(null);
+                    setIsProductFormOpen(true);
+                  }}
+                  onEditProduct={(p) => {
+                    setEditingProduct(p);
+                    setIsProductFormOpen(true);
+                  }}
+                  onDeleteProduct={handleDeleteProduct}
+                  onToggleStatus={handleToggleProductStatus}
+                />
+              )}
 
-            {adminTab === 'orders' && (
-              <OrderManagement
-                orders={orders}
-                onUpdateOrderStatus={handleUpdateOrderStatus}
-              />
-            )}
+              {adminTab === 'orders' && (
+                <OrderManagement
+                  orders={orders}
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
+                />
+              )}
 
-            {adminTab === 'settings' && (
-              <SettingsPanel
-                shaderOpacity={shaderOpacity}
-                setShaderOpacity={setShaderOpacity}
-                currency={currency}
-                setCurrency={setCurrency}
-                announcementText={announcementText}
-                setAnnouncementText={setAnnouncementText}
-                whatsappNumber={whatsappNumber}
-                setWhatsappNumber={setWhatsappNumber}
-                isSupabaseConfigured={isSupabaseConfigured}
-                onResetDemoData={handleResetToDemoData}
-              />
-            )}
-          </main>
+              {adminTab === 'settings' && (
+                <SettingsPanel
+                  shaderOpacity={shaderOpacity}
+                  setShaderOpacity={setShaderOpacity}
+                  currency={currency}
+                  setCurrency={setCurrency}
+                  announcementText={announcementText}
+                  setAnnouncementText={setAnnouncementText}
+                  whatsappNumber={whatsappNumber}
+                  setWhatsappNumber={setWhatsappNumber}
+                  isSupabaseConfigured={isSupabaseConfigured}
+                  onResetDemoData={handleResetToDemoData}
+                />
+              )}
+            </main>
+          </div>
 
           {/* Create/Edit Product Form Modal */}
           <ProductFormModal

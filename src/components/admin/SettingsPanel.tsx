@@ -47,10 +47,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   return (
-    <div className="max-w-3xl space-y-8 animate-fade-up text-[#1A1A1A]">
+    <div className="w-full max-w-4xl mx-auto space-y-6 md:space-y-8 animate-fade-up text-[#1A1A1A]">
       <div className="border-b border-black/10 pb-6">
         <span className="sub-headline block mb-1">PREFERENCIAS GENERALES</span>
-        <h1 className="font-serif-display text-3xl font-normal text-[#1A1A1A]">
+        <h1 className="font-serif-display text-2xl sm:text-3xl md:text-4xl font-normal text-[#1A1A1A]">
           Ajustes de Sistema & Experiencia
         </h1>
         <p className="font-sans-body text-xs text-[#555555] mt-1">
@@ -58,9 +58,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-8">
-        <div className="bg-[#EFECE7] border border-black/10 p-6 space-y-4 shadow-sm">
-          <h3 className="font-serif-display text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
+      <form onSubmit={handleSave} className="space-y-6 md:space-y-8">
+        <div className="bg-[#EFECE7] border border-black/10 p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
             Efectos Visuales & Shader WebGL
           </h3>
 
@@ -83,12 +83,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         </div>
 
-        <div className="bg-[#EFECE7] border border-black/10 p-6 space-y-4 shadow-sm">
-          <h3 className="font-serif-display text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
+        <div className="bg-[#EFECE7] border border-black/10 p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
             Divisa & Parámetros Comerciales
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
                 Moneda Predeterminada
@@ -115,12 +115,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         </div>
 
-        <div className="bg-[#EFECE7] border border-black/10 p-6 space-y-4 shadow-sm">
-          <h3 className="font-serif-display text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
+        <div className="bg-[#EFECE7] border border-black/10 p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
             Anuncio Superior en Tienda & Contacto
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
                 Texto de Anuncio Principal
@@ -151,49 +151,55 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         </div>
 
-        <div className="bg-[#EFECE7] border border-black/10 p-6 space-y-4 shadow-sm">
-          <h3 className="font-serif-display text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
+        <div className="bg-[#EFECE7] border border-black/10 p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal border-b border-black/10 pb-2">
             Base de Datos & Almacenamiento
           </h3>
 
-          <div className="flex items-center gap-3">
-            <span className={`w-3 h-3 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+          <div className="flex items-start sm:items-center gap-3">
+            <span
+              className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${
+                isSupabaseConfigured ? 'bg-emerald-500' : 'bg-amber-500'
+              }`}
+            ></span>
             <div>
               <p className="text-xs font-bold text-[#1A1A1A]">
-                {isSupabaseConfigured ? 'Conectado a Supabase PostgreSQL Cloud' : 'Almacenamiento Local (LocalStorage Activo)'}
-              </p>
-              <p className="text-[11px] text-[#666]">
                 {isSupabaseConfigured
-                  ? 'Todos los productos y órdenes se sincronizan con tu base de datos remota en la nube.'
-                  : 'Tus productos, inventario, pedidos y carrito se guardan de forma segura y permanente en este navegador sin necesidad de servidor.'}
+                  ? 'Conectado a Supabase PostgreSQL Cloud'
+                  : 'Almacenamiento Local (LocalStorage Activo)'}
+              </p>
+              <p className="text-[11px] text-[#666] leading-relaxed">
+                {isSupabaseConfigured
+                  ? 'Todos los productos, usuarios, órdenes y configuraciones se sincronizan en tiempo real con tu base de datos remota en Supabase.'
+                  : 'Tus productos, inventario, pedidos y carrito se guardan de forma segura y permanente en este navegador.'}
               </p>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-black/10 flex justify-between items-center">
+          <div className="pt-3 border-t border-black/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <span className="text-xs text-[#666]">
               ¿Deseas restaurar el catálogo y pedidos originales de muestra?
             </span>
             <button
               type="button"
               onClick={onResetDemoData}
-              className="px-4 py-2 border border-red-300 bg-red-50 text-red-700 text-xs font-label-caps hover:bg-red-100 transition-colors"
+              className="w-full sm:w-auto px-4 py-2.5 border border-red-300 bg-red-50 text-red-700 text-xs font-label-caps hover:bg-red-100 transition-colors text-center"
             >
               Restaurar Datos de Demostración
             </button>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2">
           <button
             type="submit"
-            className="bg-[#1A1A1A] text-[#F9F8F6] font-label-caps text-xs px-8 py-3.5 font-bold uppercase tracking-[3px] hover:bg-[#333333] transition-colors"
+            className="w-full sm:w-auto bg-[#1A1A1A] text-[#F9F8F6] font-label-caps text-xs px-8 py-3.5 font-bold uppercase tracking-[3px] hover:bg-[#333333] transition-colors text-center"
           >
             Guardar Cambios
           </button>
           {savedMessage && (
-            <span className="text-xs text-[#1A1A1A] font-mono font-bold animate-fade-up">
-              ✓ Configuración guardada correctamente
+            <span className="text-xs text-emerald-800 font-mono font-bold animate-fade-up text-center sm:text-right">
+              ✓ Configuración guardada y sincronizada en Supabase
             </span>
           )}
         </div>

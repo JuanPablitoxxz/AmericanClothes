@@ -31,41 +31,44 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-up">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-up"
+      onClick={onClose}
+    >
       <div
-        className="bg-[#F9F8F6] border border-black/10 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative grid grid-cols-1 md:grid-cols-2 text-[#1A1A1A] shadow-2xl"
+        className="bg-[#F9F8F6] border border-black/10 max-w-4xl w-full max-h-[92vh] overflow-y-auto relative grid grid-cols-1 md:grid-cols-2 text-[#1A1A1A] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 text-[#1A1A1A] hover:text-[#555555] p-2 bg-[#EFECE7] transition-colors border border-black/10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 text-[#1A1A1A] hover:text-[#555555] p-2 bg-[#EFECE7]/90 backdrop-blur-xs transition-colors border border-black/10"
         >
           <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
         {/* Product Image */}
-        <div className="bg-[#EFECE7] aspect-[4/5] relative overflow-hidden flex items-center justify-center">
+        <div className="bg-[#EFECE7] aspect-[4/4] sm:aspect-[4/5] relative overflow-hidden flex items-center justify-center">
           <img
             src={product.image}
             alt={product.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute bottom-4 left-4 bg-[#F9F8F6]/90 border border-black/10 px-3 py-1 font-label-caps text-[10px] text-[#1A1A1A] tracking-[2px]">
+          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-[#F9F8F6]/90 border border-black/10 px-3 py-1 font-label-caps text-[10px] text-[#1A1A1A] tracking-[2px]">
             SKU: {product.sku}
           </div>
         </div>
 
         {/* Product Info & Actions */}
-        <div className="p-6 md:p-10 flex flex-col justify-between space-y-6">
+        <div className="p-5 sm:p-8 md:p-10 flex flex-col justify-between space-y-5 sm:space-y-6">
           <div>
             <span className="sub-headline block mb-1">
               AMERICAN CLOTHES • {product.category.toUpperCase()}
             </span>
-            <h2 className="font-serif-display text-3xl font-normal text-[#1A1A1A] mb-3">
+            <h2 className="font-serif-display text-2xl sm:text-3xl font-normal text-[#1A1A1A] mb-2 sm:mb-3">
               {product.name}
             </h2>
-            <div className="font-sans-body text-2xl text-[#1A1A1A] font-semibold mb-6">
+            <div className="font-sans-body text-xl sm:text-2xl text-[#1A1A1A] font-semibold mb-4 sm:mb-6">
               {formatCOP(product.price)}
             </div>
 

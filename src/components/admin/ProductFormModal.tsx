@@ -300,24 +300,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             />
           </div>
 
-          {image && (
-            <div className="flex items-center gap-3 p-2 bg-[#EFECE7] border border-black/10">
-              <img src={image} alt="Preview" className="w-12 h-16 object-cover bg-[#D6D2CC]" />
-              <span className="text-[10px] text-[#888888] font-mono">Vista previa de imagen</span>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-black/10">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-black/10">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 border border-black/10 bg-[#EFECE7] text-xs font-label-caps text-[#1A1A1A] tracking-[2px]"
+              className="w-full sm:w-auto px-5 py-2.5 border border-black/10 bg-[#EFECE7] text-xs font-label-caps text-[#1A1A1A] tracking-[2px] text-center"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-[#1A1A1A] text-[#F9F8F6] text-xs font-label-caps font-bold uppercase tracking-[2px] hover:bg-[#333333]"
+              className="w-full sm:w-auto px-6 py-2.5 bg-[#1A1A1A] text-[#F9F8F6] text-xs font-label-caps font-bold uppercase tracking-[2px] hover:bg-[#333333] text-center"
             >
               {productToEdit ? 'Guardar Cambios' : 'Crear Producto'}
             </button>

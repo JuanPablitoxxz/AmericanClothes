@@ -2,17 +2,18 @@ import React from 'react';
 
 export const LookbookJournal: React.FC = () => {
   return (
-    <section className="py-24 px-6 md:px-16 max-w-[1440px] mx-auto z-10 relative bg-[#F9F8F6]" id="journal">
-      <div className="mb-12 text-center">
-        <span className="sub-headline block mb-2">
-          Manifiesto & Editorial
-        </span>
-        <h2 className="font-serif-display text-4xl text-[#1A1A1A] font-normal">
+    <section
+      className="py-14 sm:py-20 md:py-24 px-4 sm:px-8 md:px-16 max-w-[1440px] mx-auto z-10 relative bg-[#F9F8F6]"
+      id="journal"
+    >
+      <div className="mb-8 sm:mb-12 text-center">
+        <span className="sub-headline block mb-2">Manifiesto & Editorial</span>
+        <h2 className="font-serif-display text-3xl sm:text-4xl text-[#1A1A1A] font-normal">
           Diario de Alta Costura
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
         {/* Editorial Story 1 */}
         <div className="bg-[#EFECE7] border border-black/10 group hover:border-black/30 transition-all overflow-hidden flex flex-col shadow-sm">
           <div className="relative aspect-[16/9] overflow-hidden bg-[#D6D2CC]">
@@ -21,14 +22,16 @@ export const LookbookJournal: React.FC = () => {
               alt="Editorial Runway"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <span className="absolute top-4 left-4 bg-[#F9F8F6]/90 backdrop-blur-md text-[#1A1A1A] font-label-caps text-[9px] px-3 py-1 border border-black/10 tracking-[2px]">
+            <span className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-[#F9F8F6]/90 backdrop-blur-md text-[#1A1A1A] font-label-caps text-[9px] px-3 py-1 border border-black/10 tracking-[2px]">
               EDITORIAL Nº 04
             </span>
           </div>
-          <div className="p-8 flex flex-col justify-between flex-1 space-y-4">
+          <div className="p-5 sm:p-8 flex flex-col justify-between flex-1 space-y-4">
             <div>
-              <span className="text-[10px] font-label-caps text-[#888888] tracking-[2px]">AGOSTO 2026 | EDICIÓN NOIR</span>
-              <h3 className="font-serif-display text-2xl text-[#1A1A1A] group-hover:text-[#555555] transition-colors mt-2">
+              <span className="text-[10px] font-label-caps text-[#888888] tracking-[2px]">
+                AGOSTO 2026 | EDICIÓN NOIR
+              </span>
+              <h3 className="font-serif-display text-xl sm:text-2xl text-[#1A1A1A] group-hover:text-[#555555] transition-colors mt-2">
                 La Arquitectura del Silencio: Alta Costura en Oro Noble y Terciopelo
               </h3>
               <p className="text-xs text-[#555555] mt-3 leading-relaxed font-sans-body">
@@ -52,14 +55,16 @@ export const LookbookJournal: React.FC = () => {
               alt="Streetwear Haute Couture"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <span className="absolute top-4 left-4 bg-[#F9F8F6]/90 backdrop-blur-md text-[#1A1A1A] font-label-caps text-[9px] px-3 py-1 border border-black/10 tracking-[2px]">
+            <span className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-[#F9F8F6]/90 backdrop-blur-md text-[#1A1A1A] font-label-caps text-[9px] px-3 py-1 border border-black/10 tracking-[2px]">
               LOOKBOOK 2026
             </span>
           </div>
-          <div className="p-8 flex flex-col justify-between flex-1 space-y-4">
+          <div className="p-5 sm:p-8 flex flex-col justify-between flex-1 space-y-4">
             <div>
-              <span className="text-[10px] font-label-caps text-[#888888] tracking-[2px]">COLECCIÓN TÁCTICA & LUJO</span>
-              <h3 className="font-serif-display text-2xl text-[#1A1A1A] group-hover:text-[#555555] transition-colors mt-2">
+              <span className="text-[10px] font-label-caps text-[#888888] tracking-[2px]">
+                COLECCIÓN TÁCTICA & LUJO
+              </span>
+              <h3 className="font-serif-display text-xl sm:text-2xl text-[#1A1A1A] group-hover:text-[#555555] transition-colors mt-2">
                 Vanguardia Urbana: Funcionalidad Táctica y Joyería Imperial
               </h3>
               <p className="text-xs text-[#555555] mt-3 leading-relaxed font-sans-body">

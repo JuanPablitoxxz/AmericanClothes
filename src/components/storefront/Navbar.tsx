@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <nav className="fixed top-0 w-full z-40 bg-[#F9F8F6]/95 backdrop-blur-md border-b border-black/10 text-[#1A1A1A] transition-all">
-      <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-5 flex justify-between items-center">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 py-3.5 sm:py-5 flex justify-between items-center gap-2">
         {/* Brand Logo */}
         <a
           href="#"
@@ -39,13 +39,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             e.preventDefault();
             onSelectCategory('Todos');
           }}
-          className="font-serif-display text-xl md:text-2xl font-bold tracking-tight text-[#1A1A1A] hover:text-[#555555] transition-colors"
+          className="font-serif-display text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[#1A1A1A] hover:text-[#555555] transition-colors whitespace-nowrap"
         >
           AMERICAN CLOTHES
         </a>
 
         {/* Desktop Links */}
-        <div className="hidden lg:flex items-center gap-8 font-label-caps text-[11px] tracking-[3px]">
+        <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-label-caps text-[11px] tracking-[2.5px] xl:tracking-[3px]">
           <button
             onClick={() => onSelectCategory('Todos')}
             className="text-[#555555] hover:text-[#1A1A1A] transition-colors uppercase font-medium"
@@ -79,10 +79,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Right Actions & Auth */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={onOpenSearch}
-            className="text-[#1A1A1A] hover:text-[#555555] transition-colors p-1"
+            className="text-[#1A1A1A] hover:text-[#555555] transition-colors p-1.5"
             title="Buscar"
           >
             <span className="material-symbols-outlined text-xl">search</span>
@@ -90,22 +90,47 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={onOpenCart}
-            className="text-[#1A1A1A] hover:text-[#555555] transition-colors relative p-1"
+            className="text-[#1A1A1A] hover:text-[#555555] transition-colors relative p-1.5"
             title="Bolsa de Compras"
           >
             <span className="material-symbols-outlined text-xl">shopping_bag</span>
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#1A1A1A] text-[#F9F8F6] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 bg-[#1A1A1A] text-[#F9F8F6] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {cartCount}
               </span>
             )}
           </button>
 
-          {/* Auth Buttons (Desktop) */}
+          {/* Quick Auth Icon Button on Mobile (< sm) */}
+          <button
+            onClick={() => {
+              if (!currentUser) onOpenAuth('login');
+              else if (currentUser.role === 'admin') onOpenAdmin();
+              else onOpenCustomerAccount();
+            }}
+            className="sm:hidden text-[#1A1A1A] hover:text-[#555555] transition-colors p-1.5"
+            title={
+              !currentUser
+                ? 'Iniciar Sesión / Registrarse'
+                : currentUser.role === 'admin'
+                ? 'Panel Admin'
+                : 'Mi Cuenta'
+            }
+          >
+            <span className="material-symbols-outlined text-xl">
+              {!currentUser
+                ? 'person'
+                : currentUser.role === 'admin'
+                ? 'admin_panel_settings'
+                : 'account_circle'}
+            </span>
+          </button>
+
+          {/* Auth Buttons (Tablet & Desktop sm+) */}
           {!currentUser ? (
             <button
               onClick={() => onOpenAuth('login')}
-              className="hidden sm:flex items-center gap-2 bg-[#1A1A1A] text-[#F9F8F6] px-4 py-2 font-label-caps text-[10px] font-bold uppercase tracking-[2px] hover:bg-[#333333] transition-colors"
+              className="hidden sm:flex items-center gap-2 bg-[#1A1A1A] text-[#F9F8F6] px-3.5 md:px-4 py-2 font-label-caps text-[10px] font-bold uppercase tracking-[1.5px] md:tracking-[2px] hover:bg-[#333333] transition-colors"
             >
               <span className="material-symbols-outlined text-sm">person</span>
               <span>Iniciar Sesión / Registrarse</span>
@@ -114,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="hidden sm:flex items-center gap-2">
               <button
                 onClick={onOpenAdmin}
-                className="flex items-center gap-1.5 bg-[#1A1A1A] text-[#F9F8F6] px-4 py-2 font-label-caps text-[10px] font-bold uppercase tracking-[2px] hover:bg-[#333333] transition-colors"
+                className="flex items-center gap-1.5 bg-[#1A1A1A] text-[#F9F8F6] px-3.5 md:px-4 py-2 font-label-caps text-[10px] font-bold uppercase tracking-[1.5px] md:tracking-[2px] hover:bg-[#333333] transition-colors"
                 title="Volver al Panel Administrativo"
               >
                 <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
@@ -148,10 +173,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile & Tablet Menu Toggle (< lg) */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden text-[#1A1A1A] p-1"
+            className="lg:hidden text-[#1A1A1A] p-1.5"
+            aria-label="Menú"
           >
             <span className="material-symbols-outlined text-2xl">
               {mobileMenuOpen ? 'close' : 'menu'}

@@ -1,23 +1,27 @@
 import React from 'react';
-import { AdminTab } from '../../types';
+import { AdminTab, AuthUser } from '../../types';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
+  currentUser: AuthUser | null;
   onSelectTab: (tab: AdminTab) => void;
   onSwitchToStore: () => void;
+  onLogout: () => void;
   lowStockCount: number;
   ordersCount: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   activeTab,
+  currentUser,
   onSelectTab,
   onSwitchToStore,
+  onLogout,
   lowStockCount,
   ordersCount,
 }) => {
   return (
-    <aside className="fixed left-0 top-[37px] h-[calc(100vh-37px)] w-[280px] bg-[#1A1A1A] border-r border-white/10 flex flex-col py-8 px-6 z-40 select-none text-[#F9F8F6]">
+    <aside className="fixed left-0 top-0 h-screen w-[280px] bg-[#1A1A1A] border-r border-white/10 flex flex-col py-8 px-6 z-40 select-none text-[#F9F8F6]">
       {/* User Header */}
       <div className="mb-10">
         <div className="flex items-center gap-4 mb-6">
@@ -28,9 +32,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               className="w-full h-full object-cover"
             />
           </div>
-          <div>
-            <h2 className="font-serif-display font-bold text-[#F9F8F6] text-lg">Gerencia</h2>
-            <p className="font-sans-body text-xs text-[#999999]">Administrador del Sistema</p>
+          <div className="overflow-hidden">
+            <h2 className="font-serif-display font-bold text-[#F9F8F6] text-base truncate">
+              {currentUser?.name || 'Gerencia'}
+            </h2>
+            <p className="font-sans-body text-[11px] text-[#999999] truncate">
+              {currentUser?.email || 'Administrador del Sistema'}
+            </p>
           </div>
         </div>
 
@@ -132,8 +140,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         </button>
 
         <button
-          onClick={onSwitchToStore}
-          className="w-full flex items-center gap-3 p-3 text-[#888888] hover:bg-[#262626] hover:text-[#F9F8F6] transition-all text-left text-xs font-sans-body"
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 p-3 text-red-400 hover:bg-red-950/40 hover:text-red-300 transition-all text-left text-xs font-sans-body"
         >
           <span className="material-symbols-outlined text-base">logout</span>
           <span>Cerrar Sesión</span>

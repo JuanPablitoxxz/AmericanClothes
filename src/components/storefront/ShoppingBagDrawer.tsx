@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { CartItem } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { AuthUser, CartItem } from '../../types';
 import { formatCOP } from '../../lib/currency';
+import { detectSqlInjection, detectXss, validateEmail, validateSafeField } from '../../lib/security';
 
 interface ShoppingBagDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
+  currentUser?: AuthUser | null;
   onUpdateQuantity: (productId: string, size: string, newQty: number) => void;
   onRemoveItem: (productId: string, size: string) => void;
   onCheckout: (customerInfo: { name: string; email: string; address: string; phone?: string }) => Promise<string> | string | void;
@@ -16,6 +18,7 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   isOpen,
   onClose,
   cartItems,
+  currentUser,
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
@@ -24,10 +27,11 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   if (!isOpen) return null;
 
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'shipping' | 'success'>('cart');
-  const [customerName, setCustomerName] = useState('Camila Rodríguez');
-  const [customerEmail, setCustomerEmail] = useState('camila.rodriguez@email.com');
-  const [customerPhone, setCustomerPhone] = useState('310 123 4567');
-  const [shippingAddress, setShippingAddress] = useState('Calle 85 #11-53, Bogotá, Colombia');
+  const [customerName, setCustomerName] = useState(currentUser?.name || '');
+  const [customerEmail, setCustomerEmail] = useState(currentUser?.email || '');
+  const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -40,10 +44,22 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
     total: number;
   } | null>(null);
 
+  useEffect(() => {
+    if (currentUser) {
+      setCustomerName((prev) => prev || currentUser.name);
+      setCustomerEmail((prev) => prev || currentUser.email);
+      setCustomerPhone((prev) => prev || currentUser.phone || '');
+    }
+  }, [currentUser]);
+
   const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
   const total = Math.max(0, subtotal - discount);
 
   const applyPromo = () => {
+    if (detectSqlInjection(promoCode) || detectXss(promoCode)) {
+      alert('Alerta de Seguridad: Código bloqueado por protección Anti-SQLi.');
+      return;
+    }
     if (promoCode.trim().toUpperCase() === 'AMERICAN10' || promoCode.trim().toUpperCase() === 'AESTHETE10') {
       setDiscount(subtotal * 0.1);
     } else {
@@ -53,22 +69,48 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
 
   const handleCompleteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCheckoutError(null);
+
+    const nameVal = validateSafeField(customerName, 'Nombre Completo', { minLength: 3, maxLength: 100 });
+    if (!nameVal.valid) {
+      setCheckoutError(nameVal.error || 'Nombre inválido.');
+      return;
+    }
+
+    const emailVal = validateEmail(customerEmail);
+    if (!emailVal.valid) {
+      setCheckoutError(emailVal.error || 'Correo inválido.');
+      return;
+    }
+
+    const phoneVal = validateSafeField(customerPhone, 'Teléfono', { minLength: 7, maxLength: 25 });
+    if (!phoneVal.valid) {
+      setCheckoutError(phoneVal.error || 'Teléfono inválido.');
+      return;
+    }
+
+    const addrVal = validateSafeField(shippingAddress, 'Dirección de Envío', { minLength: 5, maxLength: 300 });
+    if (!addrVal.valid) {
+      setCheckoutError(addrVal.error || 'Dirección inválida.');
+      return;
+    }
+
     const itemsSnapshot = [...cartItems];
     const orderTotal = total;
     const generatedId = await onCheckout({
-      name: customerName,
-      email: customerEmail,
-      address: shippingAddress,
-      phone: customerPhone,
+      name: nameVal.sanitized,
+      email: emailVal.sanitized,
+      address: addrVal.sanitized,
+      phone: phoneVal.sanitized,
     });
 
     const safeId = typeof generatedId === 'string' && generatedId ? generatedId : `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
 
     setConfirmedOrder({
       id: safeId,
-      name: customerName,
-      phone: customerPhone,
-      address: shippingAddress,
+      name: nameVal.sanitized,
+      phone: phoneVal.sanitized,
+      address: addrVal.sanitized,
       items: itemsSnapshot,
       total: orderTotal,
     });
@@ -183,6 +225,12 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
             <h3 className="sub-headline mb-2">
               Dirección de Entrega
             </h3>
+
+            {checkoutError && (
+              <div className="p-3 bg-red-50 border border-red-300 text-red-800 text-xs">
+                {checkoutError}
+              </div>
+            )}
 
             <div>
               <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">Nombre Completo</label>

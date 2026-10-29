@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Product, ProductCategory, ProductStatus } from '../../types';
+import { validateSafeField } from '../../lib/security';
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -68,21 +69,45 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedSizes = sizesStr
+    const nameVal = validateSafeField(name, 'Nombre del Producto', { minLength: 2, maxLength: 150 });
+    if (!nameVal.valid) {
+      alert(nameVal.error);
+      return;
+    }
+
+    const skuVal = validateSafeField(sku, 'SKU', { minLength: 2, maxLength: 50 });
+    if (!skuVal.valid) {
+      alert(skuVal.error);
+      return;
+    }
+
+    const descVal = validateSafeField(description, 'Descripción', { minLength: 3, maxLength: 1000 });
+    if (!descVal.valid) {
+      alert(descVal.error);
+      return;
+    }
+
+    const sizesVal = validateSafeField(sizesStr, 'Tallas', { required: false, maxLength: 100 });
+    if (!sizesVal.valid) {
+      alert(sizesVal.error);
+      return;
+    }
+
+    const parsedSizes = sizesVal.sanitized
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
 
     onSaveProduct({
       id: productToEdit ? productToEdit.id : undefined,
-      name,
-      sku,
-      price: Number(price),
-      stock: Number(stock),
+      name: nameVal.sanitized,
+      sku: skuVal.sanitized,
+      price: Math.max(0, Number(price) || 0),
+      stock: Math.max(0, Number(stock) || 0),
       category,
       status,
       image: image || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800',
-      description,
+      description: descVal.sanitized,
       sizes: parsedSizes.length > 0 ? parsedSizes : ['Única'],
       featured: true,
     });

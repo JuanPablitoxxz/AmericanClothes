@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Product, ProductCategory } from '../../types';
 import { formatCOP } from '../../lib/currency';
+import { detectSqlInjection, detectXss } from '../../lib/security';
 
 interface ProductCatalogProps {
   products: Product[];
@@ -74,8 +75,13 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           <div className="relative flex-1 md:w-48 bg-[#EFECE7] border border-black/10">
             <input
               type="text"
+              maxLength={100}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (detectSqlInjection(val) || detectXss(val)) return;
+                setSearchQuery(val);
+              }}
               placeholder="Buscar pieza..."
               className="w-full bg-transparent border-none py-2 pl-3 pr-8 text-xs text-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
             />

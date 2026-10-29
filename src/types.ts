@@ -49,3 +49,16 @@ export interface CartItem {
 export type AdminTab = 'dashboard' | 'products' | 'orders' | 'settings';
 
 export type AppMode = 'store' | 'admin';
+
+export type UserRole = 'admin' | 'client';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  role: UserRole;
+  createdAt: string;
+  signature: string;
+}
+

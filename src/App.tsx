@@ -1,20 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { AppMode, AdminTab, Product, Order, CartItem, OrderStatus, ProductCategory } from './types';
+import {
+  AppMode,
+  AdminTab,
+  Product,
+  Order,
+  CartItem,
+  OrderStatus,
+  ProductCategory,
+  AuthUser,
+} from './types';
 import { INITIAL_PRODUCTS, INITIAL_ORDERS } from './data/mockData';
-import { isSupabaseConfigured } from './lib/supabase';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 import {
   createOrder,
   deleteProduct,
   fetchOrders,
   fetchProducts,
   saveProduct,
-  seedProductsIfEmpty,
   updateOrderStatus,
   updateProductStatus,
   updateProductStock,
 } from './lib/storeData';
+import { getVerifiedCurrentUser, logoutUser } from './lib/auth';
 import { LiquidGoldShader } from './components/LiquidGoldShader';
-import { TopBarSwitch } from './components/TopBarSwitch';
+import { AuthModal, AuthView } from './components/auth/AuthModal';
 
 // Storefront components
 import { Navbar } from './components/storefront/Navbar';
@@ -23,6 +32,7 @@ import { BentoGrid } from './components/storefront/BentoGrid';
 import { ProductCatalog } from './components/storefront/ProductCatalog';
 import { ProductDetailModal } from './components/storefront/ProductDetailModal';
 import { ShoppingBagDrawer } from './components/storefront/ShoppingBagDrawer';
+import { CustomerAccountModal } from './components/storefront/CustomerAccountModal';
 import { LookbookJournal } from './components/storefront/LookbookJournal';
 import { Footer } from './components/storefront/Footer';
 
@@ -85,7 +95,14 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>('store');
   const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
 
-  // Shared Application State with LocalStorage
+  // Authentication & Role State
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalView, setAuthModalView] = useState<AuthView>('login');
+  const [recoveryEmail, setRecoveryEmail] = useState<string>('');
+  const [isCustomerAccountOpen, setIsCustomerAccountOpen] = useState<boolean>(false);
+
+  // Shared Application State
   const [products, setProducts] = useState<Product[]>(getInitialProducts);
   const [orders, setOrders] = useState<Order[]>(getInitialOrders);
   const [cart, setCart] = useState<CartItem[]>(getInitialCart);
@@ -119,7 +136,11 @@ export default function App() {
   const [announcementText, setAnnouncementText] = useState<string>(() => {
     try {
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).announcementText ?? 'Envíos gratis a Colombia por compras superiores a $350.000 COP';
+      if (s)
+        return (
+          JSON.parse(s).announcementText ??
+          'Envíos gratis a Colombia por compras superiores a $350.000 COP'
+        );
     } catch {}
     return 'Envíos gratis a Colombia por compras superiores a $350.000 COP';
   });
@@ -131,6 +152,57 @@ export default function App() {
     } catch {}
     return '573001234567';
   });
+
+  // 1. Verificar sesión autenticada y enlaces de recuperación de contraseña por correo
+  useEffect(() => {
+    let isMounted = true;
+
+    const initAuth = async () => {
+      const verified = await getVerifiedCurrentUser();
+      if (isMounted && verified) {
+        setCurrentUser(verified);
+      }
+
+      // Detectar si el usuario viene de un enlace de recuperación de contraseña en su correo
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const isRecoveryLink =
+        params.get('recovery') === 'true' || hashParams.get('type') === 'recovery';
+
+      if (isRecoveryLink && isMounted) {
+        const emailParam = params.get('email') || '';
+        setRecoveryEmail(emailParam);
+        setAuthModalView('reset-password');
+        setIsAuthModalOpen(true);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+
+    initAuth();
+
+    // Escuchar evento PASSWORD_RECOVERY de Supabase Auth
+    const authListener = supabase?.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        if (session?.user?.email) {
+          setRecoveryEmail(session.user.email);
+        }
+        setAuthModalView('reset-password');
+        setIsAuthModalOpen(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener?.data.subscription.unsubscribe();
+    };
+  }, []);
+
+  // 2. Protección estricta de ruta: Nunca permitir modo 'admin' si el usuario no es 'admin' verificado
+  useEffect(() => {
+    if (mode === 'admin' && currentUser?.role !== 'admin') {
+      setMode('store');
+    }
+  }, [mode, currentUser]);
 
   // Persist state to localStorage
   useEffect(() => {
@@ -157,7 +229,12 @@ export default function App() {
   }, [shaderOpacity, currency, announcementText, whatsappNumber]);
 
   const handleResetToDemoData = () => {
-    if (window.confirm('¿Desea restaurar todos los productos y pedidos a los valores de prueba originales?')) {
+    if ( currentUser?.role !== 'admin') return;
+    if (
+      window.confirm(
+        '¿Desea restaurar todos los productos y pedidos a los valores de prueba originales?'
+      )
+    ) {
       localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
       localStorage.removeItem(STORAGE_KEYS.ORDERS);
       localStorage.removeItem(STORAGE_KEYS.CART);
@@ -200,6 +277,28 @@ export default function App() {
     };
   }, []);
 
+  // Auth Handlers
+  const handleOpenAuth = (view: AuthView = 'login') => {
+    setAuthModalView(view);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = (user: AuthUser) => {
+    setCurrentUser(user);
+    if (user.role === 'admin') {
+      setMode('admin');
+    } else {
+      setMode('store');
+    }
+  };
+
+  const handleLogout = async () => {
+    await logoutUser();
+    setCurrentUser(null);
+    setMode('store');
+    setIsCustomerAccountOpen(false);
+  };
+
   // Cart operations
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -232,10 +331,17 @@ export default function App() {
   };
 
   const handleRemoveFromCart = (productId: string, size: string) => {
-    setCart((prev) => prev.filter((i) => !(i.product.id === productId && i.selectedSize === size)));
+    setCart((prev) =>
+      prev.filter((i) => !(i.product.id === productId && i.selectedSize === size))
+    );
   };
 
-  const handleCheckout = async (customerInfo: { name: string; email: string; address: string; phone?: string }): Promise<string> => {
+  const handleCheckout = async (customerInfo: {
+    name: string;
+    email: string;
+    address: string;
+    phone?: string;
+  }): Promise<string> => {
     if (cart.length === 0) return '';
 
     const newOrderId = `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
@@ -267,7 +373,9 @@ export default function App() {
       }
 
       const nextProducts = products.map((p) => {
-        const cartMatch = cart.find((c) => c.product.id === p.id || (c.product.sku && c.product.sku === p.sku));
+        const cartMatch = cart.find(
+          (c) => c.product.id === p.id || (c.product.sku && c.product.sku === p.sku)
+        );
         if (!cartMatch) return p;
 
         const newStock = Math.max(0, p.stock - cartMatch.quantity);
@@ -281,8 +389,14 @@ export default function App() {
       if (isSupabaseConfigured) {
         await Promise.allSettled(
           nextProducts
-            .filter((product) => cart.some((item) => item.product.id === product.id || item.product.sku === product.sku))
-            .map((product) => updateProductStock(product.id, product.stock, product.status, product.sku))
+            .filter((product) =>
+              cart.some(
+                (item) => item.product.id === product.id || item.product.sku === product.sku
+              )
+            )
+            .map((product) =>
+              updateProductStock(product.id, product.stock, product.status, product.sku)
+            )
         );
       }
 
@@ -298,14 +412,19 @@ export default function App() {
     }
   };
 
-  // Product Management Handlers
+  // Product Management Handlers (Strict Admin-Only Guard)
   const handleSaveProduct = async (productData: Omit<Product, 'id'> & { id?: string }) => {
+    if (currentUser?.role !== 'admin') return;
     try {
       if (isSupabaseConfigured) {
         const savedProduct = await saveProduct(productData);
         setProducts((prev) =>
           productData.id
-            ? prev.map((p) => (p.id === savedProduct.id || (p.sku && p.sku === savedProduct.sku) ? savedProduct : p))
+            ? prev.map((p) =>
+                p.id === savedProduct.id || (p.sku && p.sku === savedProduct.sku)
+                  ? savedProduct
+                  : p
+              )
             : [savedProduct, ...prev]
         );
       } else if (productData.id) {
@@ -329,6 +448,7 @@ export default function App() {
   };
 
   const handleDeleteProduct = async (productId: string) => {
+    if (currentUser?.role !== 'admin') return;
     if (!window.confirm('¿Está seguro de eliminar esta pieza del catálogo?')) return;
     const target = products.find((p) => p.id === productId);
 
@@ -346,6 +466,7 @@ export default function App() {
   };
 
   const handleToggleProductStatus = async (productId: string) => {
+    if (currentUser?.role !== 'admin') return;
     const currentProduct = products.find((p) => p.id === productId);
     if (!currentProduct) return;
 
@@ -358,9 +479,15 @@ export default function App() {
 
     try {
       if (isSupabaseConfigured) {
-        const updatedProduct = await updateProductStatus(productId, nextStatus, currentProduct.sku);
+        const updatedProduct = await updateProductStatus(
+          productId,
+          nextStatus,
+          currentProduct.sku
+        );
         setProducts((prev) =>
-          prev.map((p) => (p.id === productId || (p.sku && p.sku === currentProduct.sku) ? updatedProduct : p))
+          prev.map((p) =>
+            p.id === productId || (p.sku && p.sku === currentProduct.sku) ? updatedProduct : p
+          )
         );
       } else {
         setProducts((prev) =>
@@ -376,6 +503,7 @@ export default function App() {
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    if (currentUser?.role !== 'admin') return;
     try {
       if (isSupabaseConfigured) {
         const updatedOrder = await updateOrderStatus(orderId, newStatus);
@@ -394,6 +522,7 @@ export default function App() {
   };
 
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
+  const isAdminView = mode === 'admin' && currentUser?.role === 'admin';
 
   return (
     <div className="min-h-screen bg-[#131313] text-[#e4e2e1] font-sans-body relative overflow-x-hidden selection:bg-[#e9c349] selection:text-[#131313]">
@@ -406,19 +535,37 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Bar Switcher between Store & Admin */}
-      <TopBarSwitch
-        currentMode={mode}
-        onModeChange={(newMode) => setMode(newMode)}
-        cartCount={cartCount}
+      {/* Authentication Modal (Login, Register, Forgot Password, Reset Password) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        initialView={authModalView}
+        initialEmail={recoveryEmail}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
 
-      {/* STOREFRONT MODE */}
-      {mode === 'store' ? (
-        <div className="pt-[31px]">
+      {/* Customer Account & Order History Modal */}
+      <CustomerAccountModal
+        isOpen={isCustomerAccountOpen}
+        user={currentUser}
+        orders={orders}
+        onClose={() => setIsCustomerAccountOpen(false)}
+        onLogout={handleLogout}
+        onChangePassword={() => {
+          setIsCustomerAccountOpen(false);
+          setRecoveryEmail(currentUser?.email || '');
+          setAuthModalView('reset-password');
+          setIsAuthModalOpen(true);
+        }}
+      />
+
+      {/* STOREFRONT MODE vs PROTECTED ADMIN DASHBOARD MODE */}
+      {!isAdminView ? (
+        <div>
           {/* Storefront Navigation Bar */}
           <Navbar
             cartCount={cartCount}
+            currentUser={currentUser}
             onOpenCart={() => setIsCartOpen(true)}
             onSelectCategory={(cat) => {
               setSelectedCategory(cat);
@@ -433,7 +580,16 @@ export default function App() {
                 catalogElement.scrollIntoView({ behavior: 'smooth' });
               }
             }}
-            onOpenAdmin={() => setMode('admin')}
+            onOpenAuth={(view) => handleOpenAuth(view)}
+            onOpenCustomerAccount={() => setIsCustomerAccountOpen(true)}
+            onOpenAdmin={() => {
+              if (currentUser?.role === 'admin') {
+                setMode('admin');
+              } else {
+                handleOpenAuth('login');
+              }
+            }}
+            onLogout={handleLogout}
             onOpenJournal={() => {
               const journalElement = document.getElementById('journal');
               if (journalElement) {
@@ -499,6 +655,7 @@ export default function App() {
             isOpen={isCartOpen}
             onClose={() => setIsCartOpen(false)}
             cartItems={cart}
+            currentUser={currentUser}
             onUpdateQuantity={handleUpdateCartQty}
             onRemoveItem={handleRemoveFromCart}
             onCheckout={handleCheckout}
@@ -506,13 +663,15 @@ export default function App() {
           />
         </div>
       ) : (
-        /* ADMIN DASHBOARD MODE */
-        <div className="pt-[31px] min-h-screen flex">
+        /* PROTECTED ADMIN DASHBOARD MODE (ONLY ACCESSIBLE BY VERIFIED ADMIN) */
+        <div className="min-h-screen flex">
           {/* Fixed Left Sidebar */}
           <AdminSidebar
             activeTab={adminTab}
+            currentUser={currentUser}
             onSelectTab={(tab) => setAdminTab(tab)}
             onSwitchToStore={() => setMode('store')}
+            onLogout={handleLogout}
             lowStockCount={lowStockCount}
             ordersCount={orders.length}
           />
@@ -520,7 +679,7 @@ export default function App() {
           {/* Admin Top Notification Bar */}
           <AdminTopBar
             lowStockCount={lowStockCount}
-            ordersTodayCount={12}
+            ordersTodayCount={orders.length}
           />
 
           {/* Admin Main Workspace */}

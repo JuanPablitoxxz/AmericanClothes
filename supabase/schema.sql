@@ -1,8 +1,19 @@
 -- ==============================================================================
--- SCHEMA LIMPIO PARA SUPABASE - AMERICAN CLOTHES / ATELIER NEGRO
+-- SCHEMA LIMPIO Y SEGURO PARA SUPABASE - AMERICAN CLOTHES
 -- ==============================================================================
 
--- 1. TABLAS PRINCIPALES
+-- 1. TABLA DE PERFILES DE USUARIO Y ROLES (SEPARACIÓN ADMIN / CLIENTES)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email text NOT NULL UNIQUE CHECK (char_length(email) <= 254),
+  full_name text NOT NULL CHECK (char_length(full_name) <= 100),
+  phone text CHECK (char_length(phone) <= 25),
+  role text NOT NULL DEFAULT 'client' CHECK (role IN ('admin', 'client')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 2. TABLAS PRINCIPALES DE COMERCIO
 CREATE TABLE IF NOT EXISTS public.products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,

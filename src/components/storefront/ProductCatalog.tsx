@@ -119,67 +119,108 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {sortedProducts.map((product) => (
-            <div
-              key={product.id}
-              onClick={() => onSelectProduct(product)}
-              className="group bg-[#EFECE7] border border-black/10 hover:border-black/40 transition-all duration-300 flex flex-col cursor-pointer overflow-hidden shadow-sm"
-            >
-              {/* Product Image Container (4:5 aspect ratio) */}
-              <div className="relative aspect-[4/5] bg-[#D6D2CC] overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
-                  <span className="bg-[#F9F8F6]/90 backdrop-blur-md px-2.5 py-1 font-label-caps text-[9px] text-[#1A1A1A] border border-black/10 tracking-[2px]">
-                    {product.sku}
-                  </span>
-                  {product.status === 'STOCK BAJO' && (
-                    <span className="bg-[#1A1A1A] text-[#F9F8F6] px-2.5 py-1 font-label-caps text-[9px] font-bold tracking-[2px]">
-                      Últimas unidades
+          {sortedProducts.map((product) => {
+            const isOutOfStock = product.stock <= 0;
+            const isLowStock = product.stock > 0 && product.stock <= 3;
+
+            return (
+              <div
+                key={product.id}
+                onClick={() => onSelectProduct(product)}
+                className="group bg-[#EFECE7] border border-black/10 hover:border-black/40 transition-all duration-300 flex flex-col cursor-pointer overflow-hidden shadow-sm"
+              >
+                {/* Product Image Container (4:5 aspect ratio) */}
+                <div className="relative aspect-[4/5] bg-[#D6D2CC] overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${
+                      isOutOfStock ? 'opacity-65 grayscale-[35%]' : ''
+                    }`}
+                  />
+                  <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
+                    <span className="bg-[#F9F8F6]/90 backdrop-blur-md px-2.5 py-1 font-label-caps text-[9px] text-[#1A1A1A] border border-black/10 tracking-[2px]">
+                      {product.sku}
                     </span>
-                  )}
+                    {isOutOfStock ? (
+                      <span className="bg-red-800 text-white px-2.5 py-1 font-label-caps text-[9px] font-bold tracking-[2px] shadow-sm">
+                        AGOTADO
+                      </span>
+                    ) : isLowStock ? (
+                      <span className="bg-[#1A1A1A] text-[#e9c349] px-2.5 py-1 font-label-caps text-[9px] font-bold tracking-[2px] shadow-sm">
+                        ¡Últimas unidades! ({product.stock})
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Quick Add Overlay (Always accessible on touch/mobile, hover on desktop) */}
+                  <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex items-center justify-between gap-2">
+                    <span className="font-label-caps text-[10px] text-white tracking-[2px]">
+                      Ver Detalles
+                    </span>
+                    {isOutOfStock ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddToCart(product, e);
+                        }}
+                        className="bg-red-900/90 text-white/90 px-3 py-2 font-bold cursor-not-allowed flex items-center gap-1.5 text-xs font-label-caps tracking-[2px]"
+                      >
+                        <span className="material-symbols-outlined text-sm">block</span>
+                        Agotado
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => onAddToCart(product, e)}
+                        className="bg-[#1A1A1A] text-[#F9F8F6] px-3 py-2 font-bold hover:bg-[#333333] transition-colors flex items-center gap-1.5 text-xs font-label-caps tracking-[2px]"
+                      >
+                        <span className="material-symbols-outlined text-sm">add_shopping_bag</span>
+                        Añadir
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Quick Add Overlay (Always accessible on touch/mobile, hover on desktop) */}
-                <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex items-center justify-between gap-2">
-                  <span className="font-label-caps text-[10px] text-white tracking-[2px]">
-                    Ver Detalles
-                  </span>
-                  <button
-                    onClick={(e) => onAddToCart(product, e)}
-                    className="bg-[#1A1A1A] text-[#F9F8F6] px-3 py-2 font-bold hover:bg-[#333333] transition-colors flex items-center gap-1.5 text-xs font-label-caps tracking-[2px]"
-                  >
-                    <span className="material-symbols-outlined text-sm">add_shopping_bag</span>
-                    Añadir
-                  </button>
+                {/* Product Meta */}
+                <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between bg-[#EFECE7]">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[10px] font-label-caps text-[#888888] uppercase tracking-[2px]">
+                        {product.category}
+                      </span>
+                      {isOutOfStock ? (
+                        <span className="text-[9px] font-label-caps text-red-700 font-bold uppercase tracking-[1.5px]">
+                          Agotado
+                        </span>
+                      ) : isLowStock ? (
+                        <span className="text-[9px] font-label-caps text-amber-800 font-bold uppercase tracking-[1.5px]">
+                          Últimas {product.stock} uds
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-label-caps text-[#666666] uppercase tracking-[1.5px]">
+                          Stock: {product.stock}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-serif-display text-lg text-[#1A1A1A] group-hover:text-[#555555] transition-colors">
+                      {product.name}
+                    </h3>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-3">
+                    <span className="font-sans-body font-semibold text-base text-[#1A1A1A]">
+                      {formatCOP(product.price)}
+                    </span>
+                    <span className="text-[10px] font-label-caps text-[#1A1A1A] tracking-[2px] group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                      Explorar{' '}
+                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                    </span>
+                  </div>
                 </div>
               </div>
-
-              {/* Product Meta */}
-              <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between bg-[#EFECE7]">
-                <div>
-                  <span className="text-[10px] font-label-caps text-[#888888] uppercase tracking-[2px] block mb-1">
-                    {product.category}
-                  </span>
-                  <h3 className="font-serif-display text-lg text-[#1A1A1A] group-hover:text-[#555555] transition-colors">
-                    {product.name}
-                  </h3>
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t border-black/10 pt-3">
-                  <span className="font-sans-body font-semibold text-base text-[#1A1A1A]">
-                    {formatCOP(product.price)}
-                  </span>
-                  <span className="text-[10px] font-label-caps text-[#1A1A1A] tracking-[2px] group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                    Explorar{' '}
-                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

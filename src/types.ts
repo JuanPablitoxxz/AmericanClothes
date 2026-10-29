@@ -33,6 +33,7 @@ export interface Order {
   email: string;
   timeAgo: string;
   date: string;
+  createdAtIso?: string;
   total: number;
   status: OrderStatus;
   items: OrderItem[];

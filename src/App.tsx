@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AppMode,
   AdminTab,
   Product,
   Order,
+  OrderItem,
   CartItem,
   OrderStatus,
   ProductCategory,
@@ -16,12 +17,15 @@ import {
   supabase,
 } from './lib/supabase';
 import {
+  computeProductStatusFromStock,
   createOrder,
   deleteOrder,
   deleteProduct,
   fetchCloudSettings,
   fetchOrders,
   fetchProducts,
+  getOrderReservationStatus,
+  LOW_STOCK_THRESHOLD,
   saveProduct,
   updateOrderStatus,
   updateProductStatus,
@@ -87,6 +91,19 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>(getInitialCart);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [stockNotice, setStockNotice] = useState<string | null>(null);
+  const stockNoticeTimerRef = useRef<number | null>(null);
+  const releasingOrderIdsRef = useRef<Set<string>>(new Set());
+
+  const showStockNotice = (message: string) => {
+    setStockNotice(message);
+    if (stockNoticeTimerRef.current) {
+      window.clearTimeout(stockNoticeTimerRef.current);
+    }
+    stockNoticeTimerRef.current = window.setTimeout(() => {
+      setStockNotice(null);
+    }, 4500);
+  };
 
   // UI States
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -306,21 +323,163 @@ export default function App() {
     setIsCustomerAccountOpen(false);
   };
 
-  // Cart operations
+  // Helper: Ajustar stock en Supabase y estado local (reservar/descontar o devolver al stock)
+  const adjustStockForItems = async (
+    items: OrderItem[],
+    direction: 'deduct' | 'restore',
+    sourceProducts: Product[] = products
+  ): Promise<Product[]> => {
+    if (!items || items.length === 0) return sourceProducts;
+
+    // Agrupar cantidades por producto (ID o nombre de respaldo)
+    const qtyByProductId = new Map<string, number>();
+    const qtyByName = new Map<string, number>();
+
+    for (const item of items) {
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      if (item.productId) {
+        qtyByProductId.set(item.productId, (qtyByProductId.get(item.productId) || 0) + qty);
+      }
+      if (item.name) {
+        qtyByName.set(item.name.toLowerCase(), (qtyByName.get(item.name.toLowerCase()) || 0) + qty);
+      }
+    }
+
+    const changedProducts: Product[] = [];
+    const nextProducts = sourceProducts.map((p) => {
+      const matchedQty =
+        qtyByProductId.get(p.id) ??
+        qtyByProductId.get(p.sku) ??
+        qtyByName.get(p.name.toLowerCase()) ??
+        0;
+
+      if (matchedQty <= 0) return p;
+
+      const newStock =
+        direction === 'deduct' ? Math.max(0, p.stock - matchedQty) : p.stock + matchedQty;
+      const newStatus = computeProductStatusFromStock(newStock, p.status);
+      const updated: Product = {
+        ...p,
+        stock: newStock,
+        status: newStatus,
+      };
+      changedProducts.push(updated);
+      return updated;
+    });
+
+    if (isSupabaseConfigured && changedProducts.length > 0) {
+      await Promise.allSettled(
+        changedProducts.map((prod) =>
+          updateProductStock(prod.id, prod.stock, prod.status, prod.sku)
+        )
+      );
+    }
+
+    setProducts(nextProducts);
+    return nextProducts;
+  };
+
+  // Liberación automática de reservas vencidas (> 24 horas en estado PROCESANDO sin actualización del admin)
+  useEffect(() => {
+    if (orders.length === 0 || products.length === 0) return;
+
+    const releaseExpiredOrders = async () => {
+      const expiredOrders = orders.filter(
+        (o) =>
+          o.status === 'PROCESANDO' &&
+          getOrderReservationStatus(o).isExpired &&
+          !releasingOrderIdsRef.current.has(o.id)
+      );
+
+      if (expiredOrders.length === 0) return;
+
+      let workingProducts = [...products];
+      for (const expired of expiredOrders) {
+        releasingOrderIdsRef.current.add(expired.id);
+        try {
+          workingProducts = await adjustStockForItems(
+            expired.items,
+            'restore',
+            workingProducts
+          );
+          if (isSupabaseConfigured) {
+            const cancelledOrder = await updateOrderStatus(expired.id, 'CANCELADO');
+            setOrders((prev) =>
+              prev.map((o) => (o.id === expired.id ? cancelledOrder : o))
+            );
+          } else {
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.id === expired.id ? { ...o, status: 'CANCELADO' } : o
+              )
+            );
+          }
+        } catch (err) {
+          console.error('Error al liberar reserva vencida de 24h:', err);
+          releasingOrderIdsRef.current.delete(expired.id);
+        }
+      }
+    };
+
+    releaseExpiredOrders();
+    const intervalId = window.setInterval(releaseExpiredOrders, 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [orders, products]);
+
+  // Mantener selectedProduct sincronizado con el stock en vivo
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const live = products.find((p) => p.id === selectedProduct.id);
+    if (live && (live.stock !== selectedProduct.stock || live.status !== selectedProduct.status)) {
+      setSelectedProduct(live);
+    }
+  }, [products, selectedProduct]);
+
+  // Cart operations con restricción estricta de stock disponible
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleAddToCart = (product: Product, quantity = 1, selectedSize = 'M') => {
+  const handleAddToCart = (
+    product: Product,
+    quantity = 1,
+    selectedSize = 'M'
+  ): boolean => {
+    const liveProduct = products.find((p) => p.id === product.id) || product;
+    const totalAlreadyInCart = cart
+      .filter((i) => i.product.id === liveProduct.id)
+      .reduce((sum, i) => sum + i.quantity, 0);
+
+    if (liveProduct.stock <= 0) {
+      showStockNotice(`"${liveProduct.name}" está AGOTADO (0 unidades disponibles).`);
+      return false;
+    }
+
+    if (totalAlreadyInCart + quantity > liveProduct.stock) {
+      showStockNotice(
+        `Solo hay ${liveProduct.stock} ${
+          liveProduct.stock === 1 ? 'unidad disponible' : 'unidades disponibles'
+        } de "${liveProduct.name}"${
+          totalAlreadyInCart > 0 ? ` (ya tienes ${totalAlreadyInCart} en tu bolsa)` : ''
+        }.`
+      );
+      return false;
+    }
+
     setCart((prev) => {
       const existingIndex = prev.findIndex(
-        (i) => i.product.id === product.id && i.selectedSize === selectedSize
+        (i) => i.product.id === liveProduct.id && i.selectedSize === selectedSize
       );
       if (existingIndex > -1) {
         const next = [...prev];
-        next[existingIndex].quantity += quantity;
+        next[existingIndex] = {
+          ...next[existingIndex],
+          product: liveProduct,
+          quantity: next[existingIndex].quantity + quantity,
+        };
         return next;
       }
-      return [...prev, { product, quantity, selectedSize }];
+      return [...prev, { product: liveProduct, quantity, selectedSize }];
     });
+    return true;
   };
 
   const handleUpdateCartQty = (productId: string, size: string, newQty: number) => {
@@ -328,10 +487,39 @@ export default function App() {
       handleRemoveFromCart(productId, size);
       return;
     }
+
+    const liveProduct =
+      products.find((p) => p.id === productId) ||
+      cart.find((i) => i.product.id === productId)?.product;
+
+    if (liveProduct) {
+      if (liveProduct.stock <= 0) {
+        showStockNotice(`"${liveProduct.name}" se encuentra agotado (0 disponibles).`);
+        handleRemoveFromCart(productId, size);
+        return;
+      }
+
+      const otherSizesQty = cart
+        .filter((i) => i.product.id === productId && i.selectedSize !== size)
+        .reduce((sum, i) => sum + i.quantity, 0);
+
+      const maxForThisSize = Math.max(0, liveProduct.stock - otherSizesQty);
+
+      if (newQty > maxForThisSize) {
+        showStockNotice(
+          `Solo hay ${liveProduct.stock} ${
+            liveProduct.stock === 1 ? 'unidad disponible' : 'unidades disponibles'
+          } en stock de "${liveProduct.name}".`
+        );
+        if (maxForThisSize <= 0) return;
+        newQty = maxForThisSize;
+      }
+    }
+
     setCart((prev) =>
       prev.map((i) =>
         i.product.id === productId && i.selectedSize === size
-          ? { ...i, quantity: newQty }
+          ? { ...i, product: liveProduct || i.product, quantity: newQty }
           : i
       )
     );
@@ -351,6 +539,28 @@ export default function App() {
   }): Promise<string> => {
     if (cart.length === 0) return '';
 
+    // Verificar existencias reales antes de confirmar y reservar stock
+    for (const item of cart) {
+      const liveProd = products.find((p) => p.id === item.product.id) || item.product;
+      const totalRequestedForProd = cart
+        .filter((c) => c.product.id === liveProd.id)
+        .reduce((sum, c) => sum + c.quantity, 0);
+
+      if (liveProd.stock <= 0) {
+        const msg = `"${liveProd.name}" está agotado y no puede procesarse.`;
+        showStockNotice(msg);
+        throw new Error(msg);
+      }
+      if (totalRequestedForProd > liveProd.stock) {
+        const msg = `Solo hay ${liveProd.stock} ${
+          liveProd.stock === 1 ? 'unidad disponible' : 'unidades disponibles'
+        } de "${liveProd.name}". Ajusta la cantidad en tu bolsa.`;
+        showStockNotice(msg);
+        throw new Error(msg);
+      }
+    }
+
+    const nowIso = new Date().toISOString();
     const newOrderId = `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
     const newTotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
 
@@ -360,7 +570,8 @@ export default function App() {
       email: customerInfo.email,
       phone: customerInfo.phone,
       timeAgo: 'Hace un momento',
-      date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      date: nowIso.replace('T', ' ').substring(0, 16),
+      createdAtIso: nowIso,
       total: newTotal,
       status: 'PROCESANDO',
       shippingAddress: customerInfo.address,
@@ -379,35 +590,9 @@ export default function App() {
         await createOrder(newOrder);
       }
 
-      const nextProducts = products.map((p) => {
-        const cartMatch = cart.find(
-          (c) => c.product.id === p.id || (c.product.sku && c.product.sku === p.sku)
-        );
-        if (!cartMatch) return p;
+      // Reservar y descontar inmediatamente del stock por un plazo máximo de 24 horas
+      await adjustStockForItems(newOrder.items, 'deduct');
 
-        const newStock = Math.max(0, p.stock - cartMatch.quantity);
-        return {
-          ...p,
-          stock: newStock,
-          status: newStock <= 5 ? ('STOCK BAJO' as const) : p.status,
-        };
-      });
-
-      if (isSupabaseConfigured) {
-        await Promise.allSettled(
-          nextProducts
-            .filter((product) =>
-              cart.some(
-                (item) => item.product.id === product.id || item.product.sku === product.sku
-              )
-            )
-            .map((product) =>
-              updateProductStock(product.id, product.stock, product.status, product.sku)
-            )
-        );
-      }
-
-      setProducts(nextProducts);
       setOrders((prev) => [newOrder, ...prev]);
       setCart([]);
       setDataError(null);
@@ -422,11 +607,19 @@ export default function App() {
   // Product Management Handlers (Strict Admin-Only Guard)
   const handleSaveProduct = async (productData: Omit<Product, 'id'> & { id?: string }) => {
     if (currentUser?.role !== 'admin') return;
+    const normalizedData = {
+      ...productData,
+      stock: Math.max(0, Number(productData.stock) || 0),
+      status: computeProductStatusFromStock(
+        Math.max(0, Number(productData.stock) || 0),
+        productData.status
+      ),
+    };
     try {
       if (isSupabaseConfigured) {
-        const savedProduct = await saveProduct(productData);
+        const savedProduct = await saveProduct(normalizedData);
         setProducts((prev) =>
-          productData.id
+          normalizedData.id
             ? prev.map((p) =>
                 p.id === savedProduct.id || (p.sku && p.sku === savedProduct.sku)
                   ? savedProduct
@@ -434,15 +627,17 @@ export default function App() {
               )
             : [savedProduct, ...prev]
         );
-      } else if (productData.id) {
+      } else if (normalizedData.id) {
         setProducts((prev) =>
-          prev.map((p) => (p.id === productData.id ? ({ ...p, ...productData } as Product) : p))
+          prev.map((p) =>
+            p.id === normalizedData.id ? ({ ...p, ...normalizedData } as Product) : p
+          )
         );
       } else {
         const newProduct: Product = {
-          ...productData,
+          ...normalizedData,
           id: String(Date.now()),
-          sku: productData.sku || `AMC-${Math.floor(100 + Math.random() * 900)}`,
+          sku: normalizedData.sku || `AMC-${Math.floor(100 + Math.random() * 900)}`,
         };
         setProducts((prev) => [newProduct, ...prev]);
       }
@@ -478,11 +673,9 @@ export default function App() {
     if (!currentProduct) return;
 
     const nextStatus: Product['status'] =
-      currentProduct.status === 'ACTIVO'
-        ? 'PAUSADO'
-        : currentProduct.status === 'PAUSADO'
-        ? 'ACTIVO'
-        : 'ACTIVO';
+      currentProduct.status === 'PAUSADO'
+        ? computeProductStatusFromStock(currentProduct.stock, 'ACTIVO')
+        : 'PAUSADO';
 
     try {
       if (isSupabaseConfigured) {
@@ -511,6 +704,12 @@ export default function App() {
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     if (currentUser?.role !== 'admin') return;
+    const targetOrder = orders.find((o) => o.id === orderId);
+    if (!targetOrder || targetOrder.status === newStatus) return;
+
+    const wasStockDeducted = targetOrder.status !== 'CANCELADO';
+    const willStockBeDeducted = newStatus !== 'CANCELADO';
+
     try {
       if (isSupabaseConfigured) {
         const updatedOrder = await updateOrderStatus(orderId, newStatus);
@@ -520,6 +719,16 @@ export default function App() {
           prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
         );
       }
+
+      // Si pasa de PROCESANDO/ENVIADO/ENTREGADO a CANCELADO -> devolver unidades reservadas al stock
+      if (wasStockDeducted && !willStockBeDeducted) {
+        await adjustStockForItems(targetOrder.items, 'restore');
+      }
+      // Si pasa de CANCELADO a PROCESANDO/ENVIADO/ENTREGADO -> volver a descontar del stock
+      else if (!wasStockDeducted && willStockBeDeducted) {
+        await adjustStockForItems(targetOrder.items, 'deduct');
+      }
+      // Si pasa de PROCESANDO a ENVIADO (o ENTREGADO) -> la reserva queda confirmada y descontada permanentemente del stock
 
       setDataError(null);
     } catch (error) {
@@ -533,7 +742,12 @@ export default function App() {
     if (!window.confirm(`¿Está seguro de eliminar el pedido ${orderId} de la base de datos?`)) {
       return;
     }
+    const targetOrder = orders.find((o) => o.id === orderId);
     try {
+      // Si el pedido estaba en PROCESANDO (reserva activa de 24h), devolver las unidades al stock antes de borrarlo
+      if (targetOrder && targetOrder.status === 'PROCESANDO') {
+        await adjustStockForItems(targetOrder.items, 'restore');
+      }
       if (isSupabaseConfigured) {
         await deleteOrder(orderId);
       }
@@ -545,7 +759,16 @@ export default function App() {
     }
   };
 
-  const lowStockCount = products.filter((p) => p.stock <= 5).length;
+  // Reglas de notificación al Admin:
+  // - Stock Crítico: 0 unidades (Agotado)
+  // - Stock Bajo: entre 1 y 3 unidades (Últimas unidades)
+  // - > 3 unidades: normal (no notificar nada al admin)
+  const criticalStockCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock === 0
+  ).length;
+  const lowStockCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD
+  ).length;
   const isAdminView = mode === 'admin' && currentUser?.role === 'admin';
 
   return (
@@ -556,6 +779,30 @@ export default function App() {
       {dataError && (
         <div className="fixed left-4 bottom-4 z-[60] max-w-sm bg-red-950/95 text-white border border-red-400/30 px-4 py-3 text-xs shadow-2xl">
           {dataError}
+        </div>
+      )}
+
+      {/* Notificación flotante de restricción de Stock para clientes */}
+      {stockNotice && (
+        <div className="fixed top-20 right-4 left-4 sm:left-auto z-[70] max-w-md bg-[#1A1A1A] text-[#F9F8F6] border-l-4 border-[#e9c349] px-4 py-3.5 shadow-2xl flex items-start justify-between gap-3 animate-fade-up">
+          <div className="flex items-start gap-2.5">
+            <span className="material-symbols-outlined text-[#e9c349] text-lg flex-shrink-0">
+              inventory_2
+            </span>
+            <div>
+              <p className="font-label-caps text-[10px] tracking-[2px] text-[#e9c349] font-bold uppercase">
+                Aviso de Disponibilidad de Stock
+              </p>
+              <p className="text-xs text-[#F9F8F6] mt-0.5 leading-relaxed">{stockNotice}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStockNotice(null)}
+            className="text-[#999999] hover:text-white p-0.5"
+          >
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
         </div>
       )}
 
@@ -651,8 +898,10 @@ export default function App() {
             onSelectProduct={(product) => setSelectedProduct(product)}
             onAddToCart={(product, e) => {
               e.stopPropagation();
-              handleAddToCart(product, 1, product.sizes?.[0] || 'M');
-              setIsCartOpen(true);
+              const added = handleAddToCart(product, 1, product.sizes?.[0] || 'M');
+              if (added) {
+                setIsCartOpen(true);
+              }
             }}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -667,10 +916,15 @@ export default function App() {
           {/* Product Detail Modal */}
           <ProductDetailModal
             product={selectedProduct}
+            cartItems={cart}
             onClose={() => setSelectedProduct(null)}
+            onStockLimitNotice={showStockNotice}
             onAddToCart={(product, qty, size) => {
-              handleAddToCart(product, qty, size);
-              setIsCartOpen(true);
+              const added = handleAddToCart(product, qty, size);
+              if (added) {
+                setIsCartOpen(true);
+              }
+              return added;
             }}
           />
 
@@ -679,10 +933,12 @@ export default function App() {
             isOpen={isCartOpen}
             onClose={() => setIsCartOpen(false)}
             cartItems={cart}
+            products={products}
             currentUser={currentUser}
             onUpdateQuantity={handleUpdateCartQty}
             onRemoveItem={handleRemoveFromCart}
             onCheckout={handleCheckout}
+            onStockLimitNotice={showStockNotice}
             whatsappNumber={whatsappNumber}
           />
         </div>
@@ -697,6 +953,7 @@ export default function App() {
             onSwitchToStore={() => setMode('store')}
             onLogout={handleLogout}
             lowStockCount={lowStockCount}
+            criticalStockCount={criticalStockCount}
             ordersCount={orders.length}
           />
 
@@ -705,6 +962,7 @@ export default function App() {
             {/* Admin Top Notification Bar */}
             <AdminTopBar
               lowStockCount={lowStockCount}
+              criticalStockCount={criticalStockCount}
               ordersTodayCount={orders.length}
             />
 

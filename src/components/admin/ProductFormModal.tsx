@@ -178,11 +178,33 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">Stock (Unidades)</label>
               <input
                 type="number"
+                min={0}
                 required
                 value={stock}
-                onChange={(e) => setStock(parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const nextStock = Math.max(0, parseInt(e.target.value) || 0);
+                  setStock(nextStock);
+                  if (status !== 'PAUSADO') {
+                    setStatus(nextStock <= 3 ? 'STOCK BAJO' : 'ACTIVO');
+                  }
+                }}
                 className="w-full bg-[#EFECE7] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"
               />
+              <span
+                className={`block mt-1 text-[10px] font-label-caps tracking-[1px] ${
+                  stock === 0
+                    ? 'text-red-700 font-bold'
+                    : stock <= 3
+                    ? 'text-amber-700 font-bold'
+                    : 'text-[#666666]'
+                }`}
+              >
+                {stock === 0
+                  ? '0 uds → AGOTADO (Stock Crítico)'
+                  : stock <= 3
+                  ? `${stock} uds → Últimas unidades (Stock Bajo)`
+                  : `${stock} uds → Disponibilidad normal`}
+              </span>
             </div>
 
             <div>

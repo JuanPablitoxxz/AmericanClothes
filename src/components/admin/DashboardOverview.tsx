@@ -21,8 +21,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyLowStock, setOnlyLowStock] = useState(false);
 
-  const lowStockCount = products.filter((p) => p.stock <= 5).length;
-  const activeProductsCount = products.filter((p) => p.status === 'ACTIVO').length;
+  const criticalStockCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock === 0
+  ).length;
+  const lowStockCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock > 0 && p.stock <= 3
+  ).length;
+  const totalAlertsCount = criticalStockCount + lowStockCount;
+  const activeProductsCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock > 0
+  ).length;
   const validOrders = useMemo(
     () => orders.filter((o) => o.status !== 'CANCELADO'),
     [orders]
@@ -34,7 +42,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLowStock = !onlyLowStock || p.stock <= 5;
+    const matchesLowStock = !onlyLowStock || p.stock <= 3;
     return matchesSearch && matchesLowStock;
   });
 
@@ -168,18 +176,41 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
 
-        {/* Stock Bajo */}
+        {/* Estado de Stock (Solo notifica cuando stock <= 3 o crítico = 0) */}
         <div className="bg-[#EFECE7] p-5 sm:p-6 border border-black/10 hover:border-black/30 transition-colors relative group shadow-sm sm:col-span-2 lg:col-span-1">
           <div className="flex justify-between items-start mb-3 sm:mb-4">
-            <h3 className="font-label-caps text-[10px] text-[#888888] tracking-[2px]">Stock Bajo</h3>
-            <span className="material-symbols-outlined text-amber-700">warning</span>
+            <h3 className="font-label-caps text-[10px] text-[#888888] tracking-[2px]">
+              Estado de Stock
+            </h3>
+            {criticalStockCount > 0 ? (
+              <span className="material-symbols-outlined text-red-700">error</span>
+            ) : lowStockCount > 0 ? (
+              <span className="material-symbols-outlined text-amber-700">warning</span>
+            ) : (
+              <span className="material-symbols-outlined text-emerald-700">check_circle</span>
+            )}
           </div>
           <div className="font-serif-display text-2xl sm:text-3xl xl:text-4xl text-[#1A1A1A] mb-2 font-normal tracking-tight">
-            {lowStockCount}
+            {totalAlertsCount === 0 ? 'Normal' : `${totalAlertsCount} alerta(s)`}
           </div>
-          <div className="text-xs text-amber-800 flex items-center gap-1 font-sans-body">
-            <span>Productos con ≤ 5 unidades disponibles</span>
-          </div>
+          {totalAlertsCount === 0 ? (
+            <div className="text-xs text-[#555555] flex items-center gap-1 font-sans-body">
+              <span>Sin alertas (todas las piezas tienen &gt; 3 uds)</span>
+            </div>
+          ) : (
+            <div className="text-xs flex flex-wrap items-center gap-2 font-sans-body">
+              {criticalStockCount > 0 && (
+                <span className="px-2 py-0.5 bg-red-800 text-white font-bold text-[10px] font-label-caps tracking-[1px]">
+                  Crítico (0 uds): {criticalStockCount}
+                </span>
+              )}
+              {lowStockCount > 0 && (
+                <span className="px-2 py-0.5 bg-amber-700 text-white font-bold text-[10px] font-label-caps tracking-[1px]">
+                  Stock Bajo (≤ 3 uds): {lowStockCount}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -388,7 +419,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <div className="flex items-center gap-3 text-[10px] font-label-caps">
                         <span
                           className={
-                            product.stock <= 5 ? 'text-red-700 font-bold' : 'text-[#555555]'
+                            product.stock === 0
+                              ? 'text-red-700 font-bold'
+                              : product.stock <= 3
+                              ? 'text-amber-700 font-bold'
+                              : 'text-[#555555]'
                           }
                         >
                           Stock: {product.stock}
@@ -396,14 +431,22 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         <span className="inline-flex items-center gap-1 text-[#1A1A1A]">
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              product.status === 'ACTIVO'
-                                ? 'bg-[#1A1A1A]'
-                                : product.status === 'STOCK BAJO'
+                              product.status === 'PAUSADO'
+                                ? 'bg-[#888888]'
+                                : product.stock === 0
+                                ? 'bg-red-700'
+                                : product.stock <= 3
                                 ? 'bg-amber-600'
-                                : 'bg-[#888888]'
+                                : 'bg-[#1A1A1A]'
                             }`}
                           />
-                          {product.status}
+                          {product.status === 'PAUSADO'
+                            ? 'PAUSADO'
+                            : product.stock === 0
+                            ? 'STOCK CRÍTICO (0)'
+                            : product.stock <= 3
+                            ? 'STOCK BAJO'
+                            : 'ACTIVO'}
                         </span>
                       </div>
                     </div>
@@ -459,8 +502,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <td className="p-4">
                         <span
                           className={
-                            product.stock <= 5
+                            product.stock === 0
                               ? 'text-red-700 font-bold'
+                              : product.stock <= 3
+                              ? 'text-amber-700 font-bold'
                               : 'text-[#1A1A1A]'
                           }
                         >
@@ -471,14 +516,22 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-label-caps text-[#1A1A1A]">
                           <span
                             className={`w-2 h-2 rounded-full ${
-                              product.status === 'ACTIVO'
-                                ? 'bg-[#1A1A1A]'
-                                : product.status === 'STOCK BAJO'
+                              product.status === 'PAUSADO'
+                                ? 'bg-[#888888]'
+                                : product.stock === 0
+                                ? 'bg-red-700'
+                                : product.stock <= 3
                                 ? 'bg-amber-600'
-                                : 'bg-[#888888]'
+                                : 'bg-[#1A1A1A]'
                             }`}
                           />
-                          {product.status}
+                          {product.status === 'PAUSADO'
+                            ? 'PAUSADO'
+                            : product.stock === 0
+                            ? 'STOCK CRÍTICO (0)'
+                            : product.stock <= 3
+                            ? 'STOCK BAJO'
+                            : 'ACTIVO'}
                         </span>
                       </td>
                       <td className="p-4 text-right">

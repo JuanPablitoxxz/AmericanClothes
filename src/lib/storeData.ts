@@ -53,32 +53,51 @@ const isValidUuid = (val?: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 };
 
-const toProduct = (row: ProductRow): Product => ({
-  id: row.id,
-  name: row.name,
-  sku: row.sku,
-  price: row.price,
-  stock: row.stock,
-  category: row.category,
-  status: row.status,
-  image: row.image,
-  description: row.description,
-  sizes: Array.isArray(row.sizes) ? row.sizes : ['Única'],
-  featured: Boolean(row.featured),
-});
+export const LOW_STOCK_THRESHOLD = 3;
+export const RESERVATION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
 
-const fromProduct = (product: Omit<Product, 'id'> & { id?: string }) => ({
-  name: assertSafeString(product.name, 'Nombre del producto'),
-  sku: assertSafeString(product.sku, 'SKU'),
-  price: Math.max(0, Number(product.price) || 0),
-  stock: Math.max(0, Number(product.stock) || 0),
-  category: product.category,
-  status: product.status,
-  image: product.image,
-  description: assertSafeString(product.description, 'Descripción del producto'),
-  sizes: Array.isArray(product.sizes) ? product.sizes.map((s) => assertSafeString(s, 'Talla')) : ['Única'],
-  featured: Boolean(product.featured),
-});
+export const computeProductStatusFromStock = (
+  stock: number,
+  currentStatus?: Product['status']
+): Product['status'] => {
+  if (currentStatus === 'PAUSADO') return 'PAUSADO';
+  return stock <= LOW_STOCK_THRESHOLD ? 'STOCK BAJO' : 'ACTIVO';
+};
+
+const toProduct = (row: ProductRow): Product => {
+  const safeStock = Math.max(0, Number(row.stock) || 0);
+  return {
+    id: row.id,
+    name: row.name,
+    sku: row.sku,
+    price: row.price,
+    stock: safeStock,
+    category: row.category,
+    status: computeProductStatusFromStock(safeStock, row.status),
+    image: row.image,
+    description: row.description,
+    sizes: Array.isArray(row.sizes) ? row.sizes : ['Única'],
+    featured: Boolean(row.featured),
+  };
+};
+
+const fromProduct = (product: Omit<Product, 'id'> & { id?: string }) => {
+  const safeStock = Math.max(0, Number(product.stock) || 0);
+  return {
+    name: assertSafeString(product.name, 'Nombre del producto'),
+    sku: assertSafeString(product.sku, 'SKU'),
+    price: Math.max(0, Number(product.price) || 0),
+    stock: safeStock,
+    category: product.category,
+    status: computeProductStatusFromStock(safeStock, product.status),
+    image: product.image,
+    description: assertSafeString(product.description, 'Descripción del producto'),
+    sizes: Array.isArray(product.sizes)
+      ? product.sizes.map((s) => assertSafeString(s, 'Talla'))
+      : ['Única'],
+    featured: Boolean(product.featured),
+  };
+};
 
 const toOrderItem = (row: OrderItemRow): OrderItem => ({
   productId: row.product_id,
@@ -89,6 +108,58 @@ const toOrderItem = (row: OrderItemRow): OrderItem => ({
   image: row.image,
 });
 
+export const getOrderReservationStatus = (order: Order): {
+  isReserved: boolean;
+  isExpired: boolean;
+  remainingMs: number;
+  hoursLeft: number;
+  minutesLeft: number;
+  label: string;
+} => {
+  if (order.status !== 'PROCESANDO') {
+    return {
+      isReserved: false,
+      isExpired: false,
+      remainingMs: 0,
+      hoursLeft: 0,
+      minutesLeft: 0,
+      label:
+        order.status === 'ENVIADO' || order.status === 'ENTREGADO'
+          ? 'Stock descontado permanentemente'
+          : 'Reserva liberada (Stock devuelto)',
+    };
+  }
+
+  const createdTime = new Date(order.createdAtIso || order.date).getTime();
+  if (Number.isNaN(createdTime)) {
+    return {
+      isReserved: true,
+      isExpired: false,
+      remainingMs: RESERVATION_DURATION_MS,
+      hoursLeft: 24,
+      minutesLeft: 0,
+      label: 'Reserva activa (24h máx.)',
+    };
+  }
+
+  const elapsed = Date.now() - createdTime;
+  const remainingMs = Math.max(0, RESERVATION_DURATION_MS - elapsed);
+  const isExpired = elapsed >= RESERVATION_DURATION_MS;
+  const hoursLeft = Math.floor(remainingMs / (1000 * 60 * 60));
+  const minutesLeft = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  return {
+    isReserved: !isExpired,
+    isExpired,
+    remainingMs,
+    hoursLeft,
+    minutesLeft,
+    label: isExpired
+      ? 'Plazo de 24h vencido (Liberando stock...)'
+      : `Reserva 24h activa: quedan ${hoursLeft}h ${minutesLeft}m`,
+  };
+};
+
 const formatOrderDate = (createdAt: string) =>
   new Date(createdAt).toISOString().replace('T', ' ').substring(0, 16);
 
@@ -98,6 +169,7 @@ const toOrder = (row: OrderRow): Order => ({
   email: row.email,
   timeAgo: 'Registrado en Supabase',
   date: formatOrderDate(row.created_at),
+  createdAtIso: row.created_at,
   total: row.total,
   status: row.status,
   shippingAddress: row.shipping_address ?? undefined,

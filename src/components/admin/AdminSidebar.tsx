@@ -8,6 +8,7 @@ interface AdminSidebarProps {
   onSwitchToStore: () => void;
   onLogout: () => void;
   lowStockCount: number;
+  criticalStockCount?: number;
   ordersCount: number;
 }
 
@@ -18,13 +19,21 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onSwitchToStore,
   onLogout,
   lowStockCount,
+  criticalStockCount = 0,
   ordersCount,
 }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const totalStockAlerts = criticalStockCount + lowStockCount;
 
-  const navItems: { id: AdminTab; label: string; icon: string; badge?: number }[] = [
+  const navItems: { id: AdminTab; label: string; icon: string; badge?: number; isCritical?: boolean }[] = [
     { id: 'dashboard', label: 'Panel Principal', icon: 'dashboard' },
-    { id: 'products', label: 'Productos', icon: 'inventory_2', badge: lowStockCount > 0 ? lowStockCount : undefined },
+    {
+      id: 'products',
+      label: 'Productos',
+      icon: 'inventory_2',
+      badge: totalStockAlerts > 0 ? totalStockAlerts : undefined,
+      isCritical: criticalStockCount > 0,
+    },
     { id: 'orders', label: 'Pedidos', icon: 'shopping_cart', badge: ordersCount > 0 ? ordersCount : undefined },
     { id: 'settings', label: 'Ajustes', icon: 'settings' },
   ];

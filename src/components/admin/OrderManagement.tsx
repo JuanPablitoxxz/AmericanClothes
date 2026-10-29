@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Order, OrderStatus } from '../../types';
 import { formatCOP } from '../../lib/currency';
+import { getOrderReservationStatus } from '../../lib/storeData';
 
 interface OrderManagementProps {
   orders: Order[];
@@ -97,6 +98,7 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
           <div className="grid grid-cols-1 gap-3 md:hidden">
             {filteredOrders.map((o) => {
               const isSelected = selectedOrder?.id === o.id;
+              const reservation = getOrderReservationStatus(o);
               return (
                 <div
                   key={o.id}
@@ -126,6 +128,17 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
                       {o.status}
                     </span>
                   </div>
+                  <p
+                    className={`text-[10px] font-mono mb-2 ${
+                      o.status === 'PROCESANDO'
+                        ? 'text-amber-800 font-bold'
+                        : o.status === 'CANCELADO'
+                        ? 'text-red-700'
+                        : 'text-emerald-800'
+                    }`}
+                  >
+                    {reservation.label}
+                  </p>
                   <div className="flex justify-between items-end pt-2 border-t border-black/10">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#1A1A1A] truncate">
@@ -150,52 +163,66 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
                   <th className="p-4 font-normal">PEDIDO</th>
                   <th className="p-4 font-normal">CLIENTE</th>
                   <th className="p-4 font-normal">TOTAL</th>
-                  <th className="p-4 font-normal">ESTADO</th>
+                  <th className="p-4 font-normal">ESTADO & RESERVA</th>
                   <th className="p-4 font-normal text-right">DETALLES</th>
                 </tr>
               </thead>
               <tbody className="font-sans-body text-sm">
-                {filteredOrders.map((o) => (
-                  <tr
-                    key={o.id}
-                    onClick={() => setSelectedOrderId(o.id)}
-                    className={`border-b border-black/10 hover:bg-[#F9F8F6] transition-colors cursor-pointer ${
-                      selectedOrder?.id === o.id ? 'bg-[#F9F8F6]' : ''
-                    }`}
-                  >
-                    <td className="p-4 whitespace-nowrap">
-                      <p className="font-bold text-[#1A1A1A]">{o.id}</p>
-                      <p className="text-[10px] text-[#888888]">{o.date}</p>
-                    </td>
-                    <td className="p-4">
-                      <p className="text-[#1A1A1A] text-xs font-semibold">{o.customerName}</p>
-                      <p className="text-[10px] text-[#888888]">{o.email}</p>
-                    </td>
-                    <td className="p-4 font-bold text-[#1A1A1A] whitespace-nowrap">
-                      {formatCOP(o.total)}
-                    </td>
-                    <td className="p-4 whitespace-nowrap">
-                      <span
-                        className={`inline-block px-2 py-0.5 text-[9px] font-label-caps tracking-[1px] ${
-                          o.status === 'PROCESANDO'
-                            ? 'bg-[#1A1A1A] text-[#F9F8F6]'
-                            : o.status === 'ENVIADO'
-                            ? 'bg-[#D6D2CC] text-[#1A1A1A] border border-black/10'
-                            : o.status === 'ENTREGADO'
-                            ? 'bg-emerald-800 text-white'
-                            : 'bg-red-800 text-white'
-                        }`}
-                      >
-                        {o.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <button className="text-[#555555] hover:text-[#1A1A1A] p-1">
-                        <span className="material-symbols-outlined text-lg">visibility</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredOrders.map((o) => {
+                  const reservation = getOrderReservationStatus(o);
+                  return (
+                    <tr
+                      key={o.id}
+                      onClick={() => setSelectedOrderId(o.id)}
+                      className={`border-b border-black/10 hover:bg-[#F9F8F6] transition-colors cursor-pointer ${
+                        selectedOrder?.id === o.id ? 'bg-[#F9F8F6]' : ''
+                      }`}
+                    >
+                      <td className="p-4 whitespace-nowrap">
+                        <p className="font-bold text-[#1A1A1A]">{o.id}</p>
+                        <p className="text-[10px] text-[#888888]">{o.date}</p>
+                      </td>
+                      <td className="p-4">
+                        <p className="text-[#1A1A1A] text-xs font-semibold">{o.customerName}</p>
+                        <p className="text-[10px] text-[#888888]">{o.email}</p>
+                      </td>
+                      <td className="p-4 font-bold text-[#1A1A1A] whitespace-nowrap">
+                        {formatCOP(o.total)}
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span
+                          className={`inline-block px-2 py-0.5 text-[9px] font-label-caps tracking-[1px] ${
+                            o.status === 'PROCESANDO'
+                              ? 'bg-[#1A1A1A] text-[#F9F8F6]'
+                              : o.status === 'ENVIADO'
+                              ? 'bg-[#D6D2CC] text-[#1A1A1A] border border-black/10'
+                              : o.status === 'ENTREGADO'
+                              ? 'bg-emerald-800 text-white'
+                              : 'bg-red-800 text-white'
+                          }`}
+                        >
+                          {o.status}
+                        </span>
+                        <p
+                          className={`text-[10px] font-mono mt-1 ${
+                            o.status === 'PROCESANDO'
+                              ? 'text-amber-800 font-semibold'
+                              : o.status === 'CANCELADO'
+                              ? 'text-red-700'
+                              : 'text-emerald-800'
+                          }`}
+                        >
+                          {reservation.label}
+                        </p>
+                      </td>
+                      <td className="p-4 text-right">
+                        <button className="text-[#555555] hover:text-[#1A1A1A] p-1">
+                          <span className="material-symbols-outlined text-lg">visibility</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -218,6 +245,54 @@ export const OrderManagement: React.FC<OrderManagementProps> = ({
                     {formatCOP(selectedOrder.total)}
                   </span>
                 </div>
+
+                {/* Indicador de Reserva de Stock 24h / Descuento Permanente */}
+                {(() => {
+                  const resInfo = getOrderReservationStatus(selectedOrder);
+                  if (selectedOrder.status === 'PROCESANDO') {
+                    return (
+                      <div className="p-3 bg-amber-50 border border-amber-300 text-amber-950 text-xs space-y-1">
+                        <p className="font-label-caps text-[10px] tracking-[1px] font-bold uppercase flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-amber-800">
+                            schedule
+                          </span>
+                          {resInfo.label}
+                        </p>
+                        <p className="text-[11px] leading-relaxed">
+                          Las prendas están <strong>apartadas del stock</strong> por un plazo máximo de 24 horas. Si marcas <strong>ENVIADO</strong>, se descontarán permanentemente; si pasan 24h sin actualizar o marcas <strong>CANCELADO</strong>, regresarán automáticamente al stock.
+                        </p>
+                      </div>
+                    );
+                  }
+                  if (selectedOrder.status === 'ENVIADO' || selectedOrder.status === 'ENTREGADO') {
+                    return (
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs space-y-1">
+                        <p className="font-label-caps text-[10px] tracking-[1px] font-bold uppercase flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-emerald-800">
+                            local_shipping
+                          </span>
+                          {resInfo.label}
+                        </p>
+                        <p className="text-[11px] leading-relaxed">
+                          Pedido confirmado como enviado: las unidades ya quedaron descontadas de forma permanente en Supabase.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-900 text-xs space-y-1">
+                      <p className="font-label-caps text-[10px] tracking-[1px] font-bold uppercase flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm text-red-700">
+                          history
+                        </span>
+                        {resInfo.label}
+                      </p>
+                      <p className="text-[11px] leading-relaxed">
+                        Las unidades que estaban reservadas en este pedido fueron devueltas al inventario disponible.
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <h4 className="font-label-caps text-[10px] text-[#888888] tracking-[2px] mb-1">

@@ -21,12 +21,28 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('TODOS');
   const [statusFilter, setStatusFilter] = useState<string>('TODOS');
 
+  const criticalStockCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock === 0
+  ).length;
+  const lowStockCount = products.filter(
+    (p) => p.status !== 'PAUSADO' && p.stock > 0 && p.stock <= 3
+  ).length;
+
   const filteredProducts = products.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === 'TODOS' || p.category === categoryFilter;
-    const matchesStatus = statusFilter === 'TODOS' || p.status === statusFilter;
+    const matchesStatus =
+      statusFilter === 'TODOS'
+        ? true
+        : statusFilter === 'STOCK CRÍTICO'
+        ? p.status !== 'PAUSADO' && p.stock === 0
+        : statusFilter === 'STOCK BAJO'
+        ? p.status !== 'PAUSADO' && p.stock > 0 && p.stock <= 3
+        : statusFilter === 'ACTIVO'
+        ? p.status === 'ACTIVO' && p.stock > 3
+        : p.status === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
@@ -51,6 +67,38 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
           NUEVO PRODUCTO
         </button>
       </div>
+
+      {/* Banners de Notificación al Admin (Solo aparecen cuando hay stock === 0 o 1 <= stock <= 3) */}
+      {(criticalStockCount > 0 || lowStockCount > 0) && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          {criticalStockCount > 0 && (
+            <div className="flex-1 bg-red-50 border border-red-300 p-3.5 text-red-900 text-xs flex items-center gap-3">
+              <span className="material-symbols-outlined text-red-700 text-xl">error</span>
+              <div>
+                <p className="font-label-caps text-[10px] tracking-[1.5px] font-bold uppercase">
+                  Alerta de Stock Crítico (0 Unidades / Agotado)
+                </p>
+                <p className="text-[11px] mt-0.5">
+                  Hay <strong>{criticalStockCount}</strong> producto(s) con 0 unidades. Los clientes los ven como <strong>AGOTADO</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+          {lowStockCount > 0 && (
+            <div className="flex-1 bg-amber-50 border border-amber-300 p-3.5 text-amber-950 text-xs flex items-center gap-3">
+              <span className="material-symbols-outlined text-amber-700 text-xl">warning</span>
+              <div>
+                <p className="font-label-caps text-[10px] tracking-[1.5px] font-bold uppercase">
+                  Alerta de Stock Bajo (≤ 3 Unidades)
+                </p>
+                <p className="text-[11px] mt-0.5">
+                  Hay <strong>{lowStockCount}</strong> producto(s) con 3 o menos unidades. Los clientes los ven como <strong>Últimas unidades</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filters & Search */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 bg-[#EFECE7] p-4 border border-black/10 shadow-sm">
@@ -88,8 +136,9 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
             className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"
           >
             <option value="TODOS">Todos los Estados</option>
-            <option value="ACTIVO">ACTIVO</option>
-            <option value="STOCK BAJO">STOCK BAJO</option>
+            <option value="ACTIVO">NORMAL (&gt; 3 uds)</option>
+            <option value="STOCK BAJO">STOCK BAJO (1 - 3 uds)</option>
+            <option value="STOCK CRÍTICO">STOCK CRÍTICO (0 uds)</option>
             <option value="PAUSADO">PAUSADO</option>
           </select>
         </div>
@@ -136,7 +185,15 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
                     </p>
                     <p className="text-sm font-bold text-[#1A1A1A] mt-1">{formatCOP(p.price)}</p>
                     <div className="flex items-center gap-3 mt-1.5 text-xs">
-                      <span className={p.stock <= 5 ? 'text-red-700 font-bold' : 'text-[#555555]'}>
+                      <span
+                        className={
+                          p.stock === 0
+                            ? 'text-red-700 font-bold'
+                            : p.stock <= 3
+                            ? 'text-amber-700 font-bold'
+                            : 'text-[#555555]'
+                        }
+                      >
                         Stock: {p.stock} uds
                       </span>
                       <button
@@ -145,14 +202,22 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
                       >
                         <span
                           className={`w-2 h-2 rounded-full ${
-                            p.status === 'ACTIVO'
-                              ? 'bg-[#1A1A1A]'
-                              : p.status === 'STOCK BAJO'
+                            p.status === 'PAUSADO'
+                              ? 'bg-[#888888]'
+                              : p.stock === 0
+                              ? 'bg-red-700'
+                              : p.stock <= 3
                               ? 'bg-amber-600'
-                              : 'bg-[#888888]'
+                              : 'bg-[#1A1A1A]'
                           }`}
                         />
-                        {p.status}
+                        {p.status === 'PAUSADO'
+                          ? 'PAUSADO'
+                          : p.stock === 0
+                          ? 'STOCK CRÍTICO (0)'
+                          : p.stock <= 3
+                          ? 'STOCK BAJO'
+                          : 'ACTIVO'}
                       </button>
                     </div>
                   </div>
@@ -225,7 +290,11 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
                     <td className="p-4 font-mono">
                       <span
                         className={
-                          p.stock <= 5 ? 'text-red-700 font-bold' : 'text-[#1A1A1A]'
+                          p.stock === 0
+                            ? 'text-red-700 font-bold'
+                            : p.stock <= 3
+                            ? 'text-amber-700 font-bold'
+                            : 'text-[#1A1A1A]'
                         }
                       >
                         {p.stock}
@@ -238,14 +307,22 @@ export const ProductManagement: React.FC<ProductManagementProps> = ({
                       >
                         <span
                           className={`w-2 h-2 rounded-full ${
-                            p.status === 'ACTIVO'
-                              ? 'bg-[#1A1A1A]'
-                              : p.status === 'STOCK BAJO'
+                            p.status === 'PAUSADO'
+                              ? 'bg-[#888888]'
+                              : p.stock === 0
+                              ? 'bg-red-700'
+                              : p.stock <= 3
                               ? 'bg-amber-600'
-                              : 'bg-[#888888]'
+                              : 'bg-[#1A1A1A]'
                           }`}
                         />
-                        {p.status}
+                        {p.status === 'PAUSADO'
+                          ? 'PAUSADO'
+                          : p.stock === 0
+                          ? 'STOCK CRÍTICO (0)'
+                          : p.stock <= 3
+                          ? 'STOCK BAJO'
+                          : 'ACTIVO'}
                       </button>
                     </td>
                     <td className="p-4 text-right whitespace-nowrap space-x-2">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AuthUser, CartItem } from '../../types';
+import { AuthUser, CartItem, Product } from '../../types';
 import { formatCOP } from '../../lib/currency';
 import { detectSqlInjection, detectXss, validateEmail, validateSafeField } from '../../lib/security';
 
@@ -7,10 +7,12 @@ interface ShoppingBagDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
+  products?: Product[];
   currentUser?: AuthUser | null;
   onUpdateQuantity: (productId: string, size: string, newQty: number) => void;
   onRemoveItem: (productId: string, size: string) => void;
   onCheckout: (customerInfo: { name: string; email: string; address: string; phone?: string }) => Promise<string> | string | void;
+  onStockLimitNotice?: (message: string) => void;
   whatsappNumber?: string;
 }
 
@@ -18,10 +20,12 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   isOpen,
   onClose,
   cartItems,
+  products = [],
   currentUser,
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
+  onStockLimitNotice,
   whatsappNumber = '573001234567',
 }) => {
   if (!isOpen) return null;
@@ -32,6 +36,7 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '');
   const [shippingAddress, setShippingAddress] = useState('');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [bagStockNotice, setBagStockNotice] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -95,26 +100,35 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
       return;
     }
 
-    const itemsSnapshot = [...cartItems];
-    const orderTotal = total;
-    const generatedId = await onCheckout({
-      name: nameVal.sanitized,
-      email: emailVal.sanitized,
-      address: addrVal.sanitized,
-      phone: phoneVal.sanitized,
-    });
+    try {
+      const itemsSnapshot = [...cartItems];
+      const orderTotal = total;
+      const generatedId = await onCheckout({
+        name: nameVal.sanitized,
+        email: emailVal.sanitized,
+        address: addrVal.sanitized,
+        phone: phoneVal.sanitized,
+      });
 
-    const safeId = typeof generatedId === 'string' && generatedId ? generatedId : `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
+      const safeId =
+        typeof generatedId === 'string' && generatedId
+          ? generatedId
+          : `#ORD-${Math.floor(9022 + Math.random() * 900)}`;
 
-    setConfirmedOrder({
-      id: safeId,
-      name: nameVal.sanitized,
-      phone: phoneVal.sanitized,
-      address: addrVal.sanitized,
-      items: itemsSnapshot,
-      total: orderTotal,
-    });
-    setCheckoutStep('success');
+      setConfirmedOrder({
+        id: safeId,
+        name: nameVal.sanitized,
+        phone: phoneVal.sanitized,
+        address: addrVal.sanitized,
+        items: itemsSnapshot,
+        total: orderTotal,
+      });
+      setCheckoutStep('success');
+    } catch (err) {
+      setCheckoutError(
+        err instanceof Error ? err.message : 'No hay stock suficiente para completar el pedido.'
+      );
+    }
   };
 
   return (
@@ -153,6 +167,16 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
               <p className="text-xs text-[#555555] leading-relaxed">
                 ¡Gracias <strong>{confirmedOrder.name}</strong>! Su compra ha sido registrada en el sistema y guardada en el panel administrativo.
               </p>
+              <div className="p-3 bg-amber-50 border border-amber-300/80 text-amber-950 text-[11px] leading-relaxed text-left">
+                <p className="font-bold uppercase font-label-caps text-[10px] tracking-[1px] mb-0.5">
+                  ⏳ Reserva de Stock por 24 Horas
+                </p>
+                <p>
+                  Sus productos han sido reservados y apartados del stock por un plazo máximo de{' '}
+                  <strong>24 horas</strong>. Cuando el administrador marque el pedido como{' '}
+                  <strong>ENVIADO</strong>, se descontarán permanentemente del inventario.
+                </p>
+              </div>
             </div>
 
             <div className="p-4 bg-[#EFECE7] border border-black/10 text-xs space-y-2">
@@ -315,6 +339,22 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
         ) : (
           /* Cart View */
           <div className="p-6 flex-1 overflow-y-auto space-y-4">
+            {bagStockNotice && (
+              <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-amber-700">info</span>
+                  {bagStockNotice}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setBagStockNotice(null)}
+                  className="text-amber-700 hover:text-amber-950"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              </div>
+            )}
+
             {cartItems.length === 0 ? (
               <div className="h-64 flex flex-col items-center justify-center text-center space-y-3">
                 <span className="material-symbols-outlined text-4xl text-[#888888]">shopping_bag</span>
@@ -322,61 +362,100 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
                 <p className="text-xs text-[#888888]">Explore nuestras piezas exclusivas para comenzar</p>
               </div>
             ) : (
-              cartItems.map((item) => (
-                <div
-                  key={`${item.product.id}-${item.selectedSize}`}
-                  className="flex gap-4 p-3 bg-[#EFECE7] border border-black/10 shadow-sm"
-                >
-                  <img
-                    src={item.product.image}
-                    alt={item.product.name}
-                    className="w-16 h-20 object-cover bg-[#D6D2CC]"
-                  />
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-serif-display font-normal text-sm text-[#1A1A1A]">
-                          {item.product.name}
-                        </h4>
-                        <button
-                          onClick={() => onRemoveItem(item.product.id, item.selectedSize)}
-                          className="text-[#888888] hover:text-red-600"
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      </div>
-                      <p className="text-[10px] font-label-caps text-[#888888] tracking-[1px]">
-                        Talla: {item.selectedSize} | SKU: {item.product.sku}
-                      </p>
-                    </div>
+              cartItems.map((item) => {
+                const liveProd =
+                  products.find((p) => p.id === item.product.id) || item.product;
+                const totalForProdInCart = cartItems
+                  .filter((c) => c.product.id === item.product.id)
+                  .reduce((sum, c) => sum + c.quantity, 0);
+                const isLowStock = liveProd.stock > 0 && liveProd.stock <= 3;
 
-                    <div className="flex justify-between items-center mt-2">
-                      <div className="flex items-center border border-black/10 bg-[#F9F8F6]">
-                        <button
-                          onClick={() =>
-                            onUpdateQuantity(item.product.id, item.selectedSize, item.quantity - 1)
-                          }
-                          className="px-2 py-0.5 text-xs text-[#555555]"
-                        >
-                          -
-                        </button>
-                        <span className="px-2 text-xs font-semibold text-[#1A1A1A]">{item.quantity}</span>
-                        <button
-                          onClick={() =>
-                            onUpdateQuantity(item.product.id, item.selectedSize, item.quantity + 1)
-                          }
-                          className="px-2 py-0.5 text-xs text-[#555555]"
-                        >
-                          +
-                        </button>
+                return (
+                  <div
+                    key={`${item.product.id}-${item.selectedSize}`}
+                    className="flex gap-4 p-3 bg-[#EFECE7] border border-black/10 shadow-sm"
+                  >
+                    <img
+                      src={item.product.image}
+                      alt={item.product.name}
+                      className="w-16 h-20 object-cover bg-[#D6D2CC]"
+                    />
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-serif-display font-normal text-sm text-[#1A1A1A]">
+                            {item.product.name}
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveItem(item.product.id, item.selectedSize)}
+                            className="text-[#888888] hover:text-red-600"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                        <p className="text-[10px] font-label-caps text-[#888888] tracking-[1px]">
+                          Talla: {item.selectedSize} | Stock disp: {liveProd.stock}
+                        </p>
+                        {isLowStock && (
+                          <p className="text-[10px] font-bold text-amber-800 mt-0.5">
+                            ¡Últimas unidades! ({liveProd.stock} disp.)
+                          </p>
+                        )}
                       </div>
-                      <span className="font-semibold text-sm text-[#1A1A1A]">
-                        {formatCOP(item.product.price * item.quantity)}
-                      </span>
+
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="flex items-center border border-black/10 bg-[#F9F8F6]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBagStockNotice(null);
+                              onUpdateQuantity(
+                                item.product.id,
+                                item.selectedSize,
+                                item.quantity - 1
+                              );
+                            }}
+                            className="px-2 py-0.5 text-xs text-[#555555]"
+                          >
+                            -
+                          </button>
+                          <span className="px-2 text-xs font-semibold text-[#1A1A1A]">
+                            {item.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (totalForProdInCart >= liveProd.stock) {
+                                const msg = `Solo hay ${liveProd.stock} ${
+                                  liveProd.stock === 1
+                                    ? 'unidad disponible'
+                                    : 'unidades disponibles'
+                                } en stock de "${liveProd.name}".`;
+                                setBagStockNotice(msg);
+                                onStockLimitNotice?.(msg);
+                                return;
+                              }
+                              setBagStockNotice(null);
+                              onUpdateQuantity(
+                                item.product.id,
+                                item.selectedSize,
+                                item.quantity + 1
+                              );
+                            }}
+                            className="px-2 py-0.5 text-xs text-[#555555]"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="font-semibold text-sm text-[#1A1A1A]">
+                          {formatCOP(item.product.price * item.quantity)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

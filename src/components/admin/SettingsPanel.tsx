@@ -510,19 +510,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
 
         {/* SECCIÓN PRINCIPAL: NOTIFICACIONES AUTOMÁTICAS POR TELEGRAM (100% SILENCIOSO & OFICIAL) */}
-        <div className="bg-[#EFECE7] border-2 border-[#0088cc]/30 p-5 sm:p-6 space-y-5 shadow-sm">
+        <div className="bg-[#EFECE7] border border-black/10 p-5 sm:p-6 space-y-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/10 pb-3">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#0088cc] text-2xl">
                   send
                 </span>
                 <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal">
                   Notificaciones Automáticas por Telegram
                 </h3>
-                <span className="bg-[#0088cc]/10 text-[#0088cc] text-[9px] font-mono font-bold px-2 py-0.5 border border-[#0088cc]/30 tracking-wider">
-                  ★ RECOMENDADO / 100% OFICIAL & GRATIS
-                </span>
               </div>
               <p className="text-[11px] text-[#555555] mt-1">
                 Recibe al instante en tu celular una alerta silenciosa cada vez que un cliente compre. Incluye el detalle de prendas, dirección y un enlace directo para abrir el chat de WhatsApp del cliente con un solo toque.
@@ -534,7 +531,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 type="checkbox"
                 checked={autoNotifyTelegram}
                 onChange={(e) => setAutoNotifyTelegram?.(e.target.checked)}
-                className="accent-[#0088cc] w-4 h-4 cursor-pointer"
+                className="accent-[#1A1A1A] w-4 h-4 cursor-pointer"
               />
               <span className="font-label-caps text-[10px] tracking-[1.5px] uppercase font-bold text-[#1A1A1A]">
                 Activar Alertas Telegram
@@ -552,7 +549,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 value={telegramBotToken}
                 onChange={(e) => setTelegramBotToken?.(e.target.value)}
                 placeholder="ej: 7924856123:AAFOk9... (Token HTTP API)"
-                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#0088cc] outline-none font-mono"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
               />
               <span className="text-[10px] text-[#777777] mt-1 block">
                 Token que te entrega el bot oficial <strong>@BotFather</strong>.
@@ -568,34 +565,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 value={telegramChatId}
                 onChange={(e) => setTelegramChatId?.(e.target.value)}
                 placeholder="ej: 987654321 (solo números)"
-                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#0088cc] outline-none font-mono"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
               />
               <span className="text-[10px] text-[#777777] mt-1 block">
                 Tu identificador personal obtenido en <strong>@userinfobot</strong>.
               </span>
             </div>
-          </div>
-
-          {/* Guía en 4 pasos para configurar Telegram en 1 minuto */}
-          <div className="bg-[#F9F8F6] border border-[#0088cc]/30 p-3.5 space-y-2.5 text-xs">
-            <p className="font-bold text-[#1A1A1A] flex items-center gap-1.5 font-label-caps text-[10px] tracking-[1px]">
-              <span className="material-symbols-outlined text-sm text-[#0088cc]">help</span>
-              Configura tu Bot de Telegram en 1 Minuto (Gratis de por vida)
-            </p>
-            <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-[#555555] leading-relaxed">
-              <li>
-                <strong>Crear el Bot:</strong> Abre en Telegram <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-[#0088cc] font-bold underline">@BotFather</a>, dale a <em>Iniciar</em> y escribe <code className="bg-[#EFECE7] px-1.5 py-0.5 font-mono text-[#1A1A1A]">/newbot</code>. Dale un nombre (ej: <em>Alertas American Clothes</em>) y un usuario único que termine en bot (ej: <em>american_clothes_order_bot</em>). Te devolverá el <strong>HTTP API Token</strong>; cópialo y pégalo arriba.
-              </li>
-              <li>
-                <strong>Obtener tu Chat ID:</strong> Abre en Telegram <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-[#0088cc] font-bold underline">@userinfobot</a>, dale a <em>Iniciar</em> y copia el número que aparece en <strong>Id</strong> (ej. <code>123456789</code>). Pégalo en la casilla de Chat ID.
-              </li>
-              <li>
-                <strong>Iniciar tu bot:</strong> Entra al chat de tu bot recién creado en Telegram y presiona el botón <strong>INICIAR / START</strong> (paso indispensable para que pueda escribirte).
-              </li>
-              <li>
-                <strong>Probar:</strong> Pulsa el botón <strong>Probar Notificación en Telegram</strong> aquí abajo. Te llegará al instante la alerta con el diseño completo del pedido.
-              </li>
-            </ol>
           </div>
 
           {/* Botón de Prueba Telegram y Feedback */}
@@ -604,7 +579,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               type="button"
               disabled={telegramTestStatus.loading}
               onClick={handleTestTelegramNotification}
-              className="px-4 py-2.5 bg-[#0088cc] hover:bg-[#0077b5] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+              className="px-4 py-2.5 bg-[#1A1A1A] hover:bg-[#333333] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base">send</span>
               {telegramTestStatus.loading ? 'Enviando...' : 'Probar Notificación en Telegram'}
@@ -686,25 +661,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 Código para que el bot te envíe WhatsApps automáticamente.
               </span>
             </div>
-          </div>
-
-          {/* Guía rápida para obtener la API Key en 30 segundos */}
-          <div className="bg-[#F9F8F6] border border-[#25D366]/40 p-3.5 space-y-2 text-xs">
-            <p className="font-bold text-[#1A1A1A] flex items-center gap-1.5 font-label-caps text-[10px] tracking-[1px]">
-              <span className="material-symbols-outlined text-sm text-[#25D366]">help</span>
-              ¿Cómo activar el Bot de WhatsApp en 30 segundos? (100% Gratis)
-            </p>
-            <ol className="list-decimal list-inside space-y-1 text-[11px] text-[#555555] leading-relaxed">
-              <li>
-                Desde tu WhatsApp (el celular registrado arriba), envía este mensaje: <code className="bg-[#EFECE7] px-1.5 py-0.5 font-mono text-[#1A1A1A] font-bold">I allow callmebot to send me messages</code> al nuevo número activo <a href="https://wa.me/34623786449?text=I%20allow%20callmebot%20to%20send%20me%20messages" target="_blank" rel="noopener noreferrer" className="text-emerald-700 font-bold underline">+34 623 78 64 49</a> (haz clic en el enlace para abrirlo directo).
-              </li>
-              <li>
-                El bot te responderá en pocos segundos con tu <strong>apikey</strong> (un número de 6 o 7 dígitos).
-              </li>
-              <li>
-                Pega ese número en la casilla <strong>API Key de CallMeBot</strong> y haz clic en <strong>Guardar Cambios</strong>. ¡Listo! A partir de ese momento cada compra te llegará sola a tu WhatsApp.
-              </li>
-            </ol>
           </div>
 
           {/* Opción avanzada de Webhook */}

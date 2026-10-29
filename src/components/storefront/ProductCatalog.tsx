@@ -27,12 +27,13 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   const categories: string[] = ['Todos', 'Hombre', 'Mujer', 'Accesorios'];
 
   const filteredProducts = products.filter((p) => {
+    const isVisibleInStore = p.status !== 'PAUSADO';
     const matchesCategory = selectedCategory === 'Todos' || p.category === selectedCategory;
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return isVisibleInStore && matchesCategory && matchesSearch;
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {

@@ -38,18 +38,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setStatus(productToEdit.status);
       setImage(productToEdit.image);
       setDescription(productToEdit.description);
-      setSizesStr(productToEdit.sizes && productToEdit.sizes.length > 0 ? productToEdit.sizes.join(', ') : 'Única');
+      setSizesStr(
+        productToEdit.sizes && productToEdit.sizes.length > 0
+          ? productToEdit.sizes.join(', ')
+          : 'Única'
+      );
     } else {
       setName('');
       setSku(`AMC-${Math.floor(100 + Math.random() * 900)}`);
-      setPrice(450000);
-      setStock(15);
+      setPrice(0);
+      setStock(1);
       setCategory('Hombre');
       setStatus('ACTIVO');
-      setImage(
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuDe8JFelISU8TiNUjGi_bscGbRRuZpQiYRbbmzoOXJGdEweGYCQsVwHdSkmR5m0X9qGyvvjN6MOPPCBsB61M1Uscn_4bwQ_XZsK5eKqjyfEZTo3op4zYnD5RRjkzwS35Cp9SwUaJi2lXSYL8Yotxim3wDveH8LLeMT1q3pYSEepnYqECKV766_obVtzw5ToXAI4JHqAHH94pM3_xOG-gb8Z6UzG0z0nfm_jypx5-3YEGCLGdXxdqfPr'
-      );
-      setDescription('Pieza de edición limitada confeccionada por American Clothes en Colombia.');
+      setImage('');
+      setDescription('');
       setSizesStr('S, M, L, XL');
     }
   }, [productToEdit, isOpen]);

@@ -11,7 +11,9 @@ interface SettingsPanelProps {
   whatsappNumber: string;
   setWhatsappNumber: (val: string) => void;
   isSupabaseConfigured: boolean;
-  onResetDemoData: () => void;
+  productsCount: number;
+  ordersCount: number;
+  onSyncDatabase: () => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -24,7 +26,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   whatsappNumber,
   setWhatsappNumber,
   isSupabaseConfigured,
-  onResetDemoData,
+  productsCount,
+  ordersCount,
+  onSyncDatabase,
 }) => {
   const [savedMessage, setSavedMessage] = useState(false);
 
@@ -178,14 +182,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
           <div className="pt-3 border-t border-black/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <span className="text-xs text-[#666]">
-              ¿Deseas restaurar el catálogo y pedidos originales de muestra?
+              Estado actual en Supabase: <strong>{productsCount} productos</strong> y{' '}
+              <strong>{ordersCount} pedidos</strong> registrados.
             </span>
             <button
               type="button"
-              onClick={onResetDemoData}
-              className="w-full sm:w-auto px-4 py-2.5 border border-red-300 bg-red-50 text-red-700 text-xs font-label-caps hover:bg-red-100 transition-colors text-center"
+              onClick={onSyncDatabase}
+              className="w-full sm:w-auto px-4 py-2.5 border border-black/20 bg-[#F9F8F6] text-[#1A1A1A] text-xs font-label-caps hover:bg-[#1A1A1A] hover:text-[#F9F8F6] transition-colors text-center flex items-center justify-center gap-1.5"
             >
-              Restaurar Datos de Demostración
+              <span className="material-symbols-outlined text-sm">sync</span>
+              Sincronizar Ahora con Supabase
             </button>
           </div>
         </div>

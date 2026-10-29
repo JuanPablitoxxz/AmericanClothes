@@ -126,23 +126,9 @@ export const fetchProducts = async (): Promise<Product[]> => {
   return (data ?? []).map((row) => toProduct(row as ProductRow));
 };
 
-export const seedProductsIfEmpty = async (products: Product[]): Promise<Product[]> => {
-  try {
-    const existingProducts = await fetchProducts();
-    if (existingProducts.length > 0) return existingProducts;
-
-    const client = requireSupabase();
-    const { data, error } = await client
-      .from('products')
-      .upsert(products.map(fromProduct), { onConflict: 'sku' })
-      .select('*');
-
-    if (error) throw error;
-    return (data ?? []).map((row) => toProduct(row as ProductRow));
-  } catch (e) {
-    console.error('Error en seedProductsIfEmpty:', e);
-    throw e;
-  }
+export const seedProductsIfEmpty = async (_products?: Product[]): Promise<Product[]> => {
+  // Ya no inyecta productos de prueba; devuelve únicamente los productos reales de Supabase
+  return fetchProducts();
 };
 
 export const fetchOrders = async (): Promise<Order[]> => {
@@ -330,6 +316,19 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
     throw error;
   }
   return toOrder(data as OrderRow);
+};
+
+export const deleteOrder = async (orderId: string): Promise<void> => {
+  const client = requireSupabase();
+  const safeOrderId = assertSafeString(orderId, 'ID de orden');
+
+  await client.from('order_items').delete().eq('order_id', safeOrderId);
+  const { error } = await client.from('orders').delete().eq('id', safeOrderId);
+
+  if (error) {
+    console.error('Error al eliminar pedido en Supabase:', error);
+    throw error;
+  }
 };
 
 export interface StoreSettings {

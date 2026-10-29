@@ -127,6 +127,9 @@ CREATE POLICY "Public read order_items" ON public.order_items FOR SELECT USING (
 DROP POLICY IF EXISTS "Public insert order_items" ON public.order_items;
 CREATE POLICY "Public insert order_items" ON public.order_items FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Public delete order_items" ON public.order_items;
+CREATE POLICY "Public delete order_items" ON public.order_items FOR DELETE USING (true);
+
 -- 7. MIGRAR AUTOMÁTICAMENTE USUARIOS EXISTENTES A LA TABLA app_users
 INSERT INTO public.app_users (id, email, name, phone, role, salt, password_hash, created_at)
 SELECT

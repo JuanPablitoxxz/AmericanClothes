@@ -9,7 +9,6 @@ import {
   ProductCategory,
   AuthUser,
 } from './types';
-import { INITIAL_PRODUCTS, INITIAL_ORDERS } from './data/mockData';
 import {
   clearPasswordRecoveryFlag,
   isSupabaseConfigured,
@@ -18,13 +17,12 @@ import {
 } from './lib/supabase';
 import {
   createOrder,
+  deleteOrder,
   deleteProduct,
   fetchCloudSettings,
   fetchOrders,
   fetchProducts,
-  saveCloudSettings,
   saveProduct,
-  seedProductsIfEmpty,
   updateOrderStatus,
   updateProductStatus,
   updateProductStock,
@@ -60,32 +58,6 @@ const STORAGE_KEYS = {
   SETTINGS: 'american_clothes_settings_v1',
 };
 
-const getInitialProducts = (): Product[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (e) {
-    console.error('Error al leer productos de localStorage:', e);
-  }
-  return INITIAL_PRODUCTS;
-};
-
-const getInitialOrders = (): Order[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (e) {
-    console.error('Error al leer pedidos de localStorage:', e);
-  }
-  return INITIAL_ORDERS;
-};
-
 const getInitialCart = (): CartItem[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CART);
@@ -110,9 +82,9 @@ export default function App() {
   const [recoveryEmail, setRecoveryEmail] = useState<string>('');
   const [isCustomerAccountOpen, setIsCustomerAccountOpen] = useState<boolean>(false);
 
-  // Shared Application State
-  const [products, setProducts] = useState<Product[]>(getInitialProducts);
-  const [orders, setOrders] = useState<Order[]>(getInitialOrders);
+  // Shared Application State (100% desde Supabase, sin mockups)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>(getInitialCart);
   const [dataError, setDataError] = useState<string | null>(null);
 
@@ -199,19 +171,7 @@ export default function App() {
     }
   }, [mode, currentUser]);
 
-  // Persist state to localStorage
-  useEffect(() => {
-    if (!isSupabaseConfigured) {
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-    }
-  }, [products]);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured) {
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-    }
-  }, [orders]);
-
+  // Persist cart & settings to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
   }, [cart]);
@@ -223,39 +183,50 @@ export default function App() {
     );
   }, [shaderOpacity, currency, announcementText, whatsappNumber]);
 
-  const handleResetToDemoData = () => {
-    if ( currentUser?.role !== 'admin') return;
-    if (
-      window.confirm(
-        '¿Desea restaurar todos los productos y pedidos a los valores de prueba originales?'
-      )
-    ) {
-      localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
-      localStorage.removeItem(STORAGE_KEYS.ORDERS);
-      localStorage.removeItem(STORAGE_KEYS.CART);
-      setProducts(INITIAL_PRODUCTS);
-      setOrders(INITIAL_ORDERS);
-      setCart([]);
+  const handleSyncDatabase = async () => {
+    try {
+      if (!isSupabaseConfigured) return;
+      const [remoteProducts, remoteOrders, remoteSettings] = await Promise.all([
+        fetchProducts(),
+        fetchOrders(),
+        fetchCloudSettings(),
+      ]);
+      setProducts(remoteProducts);
+      setOrders(remoteOrders);
+      if (remoteSettings) {
+        setShaderOpacity(remoteSettings.shaderOpacity);
+        setCurrency(remoteSettings.currency);
+        setAnnouncementText(remoteSettings.announcementText);
+        setWhatsappNumber(remoteSettings.whatsappNumber);
+      }
+      setDataError(null);
+    } catch (error) {
+      console.error('Error al sincronizar desde Supabase:', error);
+      setDataError('No fue posible sincronizar con Supabase.');
     }
   };
 
   useEffect(() => {
     let isMounted = true;
 
+    // Limpiar cualquier caché viejo de datos mockup en el navegador
+    try {
+      localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
+      localStorage.removeItem(STORAGE_KEYS.ORDERS);
+    } catch {}
+
     const loadStoreData = async () => {
       try {
         if (!isSupabaseConfigured) return;
 
         const [remoteProducts, remoteOrders, remoteSettings] = await Promise.all([
-          seedProductsIfEmpty(INITIAL_PRODUCTS),
+          fetchProducts(),
           fetchOrders(),
           fetchCloudSettings(),
         ]);
 
         if (!isMounted) return;
-        if (remoteProducts && remoteProducts.length > 0) {
-          setProducts(remoteProducts);
-        }
+        setProducts(remoteProducts);
         setOrders(remoteOrders);
 
         if (remoteSettings) {
@@ -269,7 +240,7 @@ export default function App() {
       } catch (error) {
         console.error('Error al cargar datos desde Supabase:', error);
         if (isMounted) {
-          setDataError('No fue posible sincronizar con Supabase. Usando datos locales.');
+          setDataError('No fue posible sincronizar con Supabase.');
         }
       }
     };
@@ -285,7 +256,7 @@ export default function App() {
         async () => {
           try {
             const latestProducts = await fetchProducts();
-            if (isMounted && latestProducts.length > 0) {
+            if (isMounted) {
               setProducts(latestProducts);
             }
           } catch {}
@@ -557,6 +528,23 @@ export default function App() {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    if (currentUser?.role !== 'admin') return;
+    if (!window.confirm(`¿Está seguro de eliminar el pedido ${orderId} de la base de datos?`)) {
+      return;
+    }
+    try {
+      if (isSupabaseConfigured) {
+        await deleteOrder(orderId);
+      }
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setDataError(null);
+    } catch (error) {
+      console.error('No fue posible eliminar el pedido en Supabase:', error);
+      setDataError('No fue posible eliminar el pedido en Supabase.');
+    }
+  };
+
   const lowStockCount = products.filter((p) => p.stock <= 5).length;
   const isAdminView = mode === 'admin' && currentUser?.role === 'admin';
 
@@ -758,6 +746,7 @@ export default function App() {
                 <OrderManagement
                   orders={orders}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
+                  onDeleteOrder={handleDeleteOrder}
                 />
               )}
 
@@ -772,7 +761,9 @@ export default function App() {
                   whatsappNumber={whatsappNumber}
                   setWhatsappNumber={setWhatsappNumber}
                   isSupabaseConfigured={isSupabaseConfigured}
-                  onResetDemoData={handleResetToDemoData}
+                  productsCount={products.length}
+                  ordersCount={orders.length}
+                  onSyncDatabase={handleSyncDatabase}
                 />
               )}
             </main>

@@ -228,9 +228,6 @@ export const ensureSeededAccounts = async (): Promise<StoredUserAccount[]> => {
   const adminSalt = generateSalt();
   const adminHash = await hashPasswordPBKDF2('Admin2026*', adminSalt);
 
-  const clientSalt = generateSalt();
-  const clientHash = await hashPasswordPBKDF2('Cliente2026*', clientSalt);
-
   const seeded: StoredUserAccount[] = [
     {
       id: '2bdc3d6d-3716-4d13-9b0a-2d05a8c7a7db',
@@ -240,16 +237,6 @@ export const ensureSeededAccounts = async (): Promise<StoredUserAccount[]> => {
       role: 'admin',
       salt: adminSalt,
       passwordHash: adminHash,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: '83c25998-b292-42ec-828f-97b4fb070d90',
-      email: 'cliente@americanclothes.com',
-      name: 'Camila Rodríguez',
-      phone: '310 123 4567',
-      role: 'client',
-      salt: clientSalt,
-      passwordHash: clientHash,
       createdAt: new Date().toISOString(),
     },
   ];

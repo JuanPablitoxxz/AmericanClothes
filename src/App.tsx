@@ -22,6 +22,7 @@ import {
   deleteOrder,
   deleteProduct,
   fetchCloudSettings,
+  saveCloudSettings,
   fetchOrders,
   fetchProducts,
   getOrderReservationStatus,
@@ -180,19 +181,42 @@ export default function App() {
 
   const [telegramBotToken, setTelegramBotToken] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_telegram_bot_token_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).telegramBotToken ?? '';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.telegramBotToken && parsed.telegramBotToken.trim()) return parsed.telegramBotToken.trim();
+      }
     } catch {}
     return '';
   });
 
   const [telegramChatId, setTelegramChatId] = useState<string>(() => {
     try {
+      const direct = localStorage.getItem('american_clothes_telegram_chat_id_v1');
+      if (direct && direct.trim()) return direct.trim();
       const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (s) return JSON.parse(s).telegramChatId ?? '';
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.telegramChatId && parsed.telegramChatId.trim()) return parsed.telegramChatId.trim();
+      }
     } catch {}
     return '';
   });
+
+  // Mantener siempre respaldado en LocalStorage dedicado para máxima persistencia en recargas F5
+  useEffect(() => {
+    if (telegramBotToken && telegramBotToken.trim()) {
+      localStorage.setItem('american_clothes_telegram_bot_token_v1', telegramBotToken.trim());
+    }
+  }, [telegramBotToken]);
+
+  useEffect(() => {
+    if (telegramChatId && telegramChatId.trim()) {
+      localStorage.setItem('american_clothes_telegram_chat_id_v1', telegramChatId.trim());
+    }
+  }, [telegramChatId]);
 
   const [autoNotifyTelegram, setAutoNotifyTelegram] = useState<boolean>(() => {
     try {
@@ -345,8 +369,29 @@ export default function App() {
         if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
         if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
         if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
-        if (remoteSettings.telegramBotToken !== undefined) setTelegramBotToken(remoteSettings.telegramBotToken);
-        if (remoteSettings.telegramChatId !== undefined) setTelegramChatId(remoteSettings.telegramChatId);
+        
+        // Sincronización robusta de Telegram: NUNCA borrar con vacío si existe localmente
+        const localDirectToken = localStorage.getItem('american_clothes_telegram_bot_token_v1') || '';
+        const localDirectChat = localStorage.getItem('american_clothes_telegram_chat_id_v1') || '';
+
+        if (remoteSettings.telegramBotToken && remoteSettings.telegramBotToken.trim()) {
+          setTelegramBotToken(remoteSettings.telegramBotToken.trim());
+          localStorage.setItem('american_clothes_telegram_bot_token_v1', remoteSettings.telegramBotToken.trim());
+        } else if (localDirectToken.trim()) {
+          saveCloudSettings({
+            ...remoteSettings,
+            telegramBotToken: localDirectToken.trim(),
+            telegramChatId: localDirectChat.trim() || remoteSettings.telegramChatId || '',
+          }).catch(() => {});
+        }
+
+        if (remoteSettings.telegramChatId && remoteSettings.telegramChatId.trim()) {
+          setTelegramChatId(remoteSettings.telegramChatId.trim());
+          localStorage.setItem('american_clothes_telegram_chat_id_v1', remoteSettings.telegramChatId.trim());
+        } else if (localDirectChat.trim()) {
+          setTelegramChatId(localDirectChat.trim());
+        }
+
         if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
         if (remoteSettings.nequiNumber !== undefined) setNequiNumber(remoteSettings.nequiNumber);
         if (remoteSettings.daviplataNumber !== undefined) setDaviplataNumber(remoteSettings.daviplataNumber);
@@ -392,8 +437,29 @@ export default function App() {
           if (remoteSettings.whatsappApiKey !== undefined) setWhatsappApiKey(remoteSettings.whatsappApiKey);
           if (remoteSettings.whatsappWebhookUrl !== undefined) setWhatsappWebhookUrl(remoteSettings.whatsappWebhookUrl);
           if (remoteSettings.autoNotifyAdmin !== undefined) setAutoNotifyAdmin(remoteSettings.autoNotifyAdmin);
-          if (remoteSettings.telegramBotToken !== undefined) setTelegramBotToken(remoteSettings.telegramBotToken);
-          if (remoteSettings.telegramChatId !== undefined) setTelegramChatId(remoteSettings.telegramChatId);
+          
+          // Sincronización robusta de Telegram: NUNCA borrar con vacío si existe localmente
+          const localDirectToken = localStorage.getItem('american_clothes_telegram_bot_token_v1') || '';
+          const localDirectChat = localStorage.getItem('american_clothes_telegram_chat_id_v1') || '';
+
+          if (remoteSettings.telegramBotToken && remoteSettings.telegramBotToken.trim()) {
+            setTelegramBotToken(remoteSettings.telegramBotToken.trim());
+            localStorage.setItem('american_clothes_telegram_bot_token_v1', remoteSettings.telegramBotToken.trim());
+          } else if (localDirectToken.trim()) {
+            saveCloudSettings({
+              ...remoteSettings,
+              telegramBotToken: localDirectToken.trim(),
+              telegramChatId: localDirectChat.trim() || remoteSettings.telegramChatId || '',
+            }).catch(() => {});
+          }
+
+          if (remoteSettings.telegramChatId && remoteSettings.telegramChatId.trim()) {
+            setTelegramChatId(remoteSettings.telegramChatId.trim());
+            localStorage.setItem('american_clothes_telegram_chat_id_v1', remoteSettings.telegramChatId.trim());
+          } else if (localDirectChat.trim()) {
+            setTelegramChatId(localDirectChat.trim());
+          }
+
           if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
           if (remoteSettings.nequiNumber !== undefined) setNequiNumber(remoteSettings.nequiNumber);
           if (remoteSettings.daviplataNumber !== undefined) setDaviplataNumber(remoteSettings.daviplataNumber);

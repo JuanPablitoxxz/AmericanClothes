@@ -140,6 +140,56 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setTimeout(() => setSavedMessage(false), 2000);
   };
 
+  const handleSaveTelegramConfig = async () => {
+    const cleanToken = telegramBotToken.trim();
+    const cleanChatId = telegramChatId.trim();
+
+    if (!cleanToken || !cleanChatId) {
+      setTelegramTestStatus({
+        loading: false,
+        message: 'Por favor ingresa tanto el Bot Token como el Chat ID antes de guardar.',
+        isError: true,
+      });
+      return;
+    }
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('american_clothes_telegram_bot_token_v1', cleanToken);
+        localStorage.setItem('american_clothes_telegram_chat_id_v1', cleanChatId);
+      }
+      if (isSupabaseConfigured) {
+        await saveCloudSettings({
+          shaderOpacity,
+          currency,
+          announcementText,
+          whatsappNumber,
+          whatsappApiKey,
+          whatsappWebhookUrl,
+          autoNotifyAdmin,
+          telegramBotToken: cleanToken,
+          telegramChatId: cleanChatId,
+          autoNotifyTelegram,
+          nequiNumber,
+          daviplataNumber,
+          breBKey,
+          paymentQrImage,
+        });
+      }
+      setTelegramTestStatus({
+        loading: false,
+        message: '✓ Token y Chat ID guardados de forma permanente para siempre.',
+        isError: false,
+      });
+    } catch (err: any) {
+      setTelegramTestStatus({
+        loading: false,
+        message: err?.message || 'Error al guardar.',
+        isError: true,
+      });
+    }
+  };
+
   const handleTestTelegramNotification = async () => {
     if (!telegramBotToken.trim()) {
       setTelegramTestStatus({
@@ -159,9 +209,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       return;
     }
 
+    // Guardar automáticamente en Supabase y localStorage al hacer la prueba
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('american_clothes_telegram_bot_token_v1', telegramBotToken.trim());
+        localStorage.setItem('american_clothes_telegram_chat_id_v1', telegramChatId.trim());
+      }
+      if (isSupabaseConfigured) {
+        await saveCloudSettings({
+          shaderOpacity,
+          currency,
+          announcementText,
+          whatsappNumber,
+          whatsappApiKey,
+          whatsappWebhookUrl,
+          autoNotifyAdmin,
+          telegramBotToken: telegramBotToken.trim(),
+          telegramChatId: telegramChatId.trim(),
+          autoNotifyTelegram,
+          nequiNumber,
+          daviplataNumber,
+          breBKey,
+          paymentQrImage,
+        });
+      }
+    } catch (saveErr) {
+      console.warn('Aviso al auto-guardar credenciales de Telegram:', saveErr);
+    }
+
     setTelegramTestStatus({
       loading: true,
-      message: 'Enviando alerta de prueba a Telegram...',
+      message: 'Guardando datos y enviando alerta de prueba a Telegram...',
       isError: false,
     });
 
@@ -547,7 +625,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <input
                 type="text"
                 value={telegramBotToken}
-                onChange={(e) => setTelegramBotToken?.(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTelegramBotToken?.(val);
+                  try {
+                    localStorage.setItem('american_clothes_telegram_bot_token_v1', val.trim());
+                  } catch {}
+                }}
+                onBlur={() => {
+                  try {
+                    localStorage.setItem('american_clothes_telegram_bot_token_v1', telegramBotToken.trim());
+                  } catch {}
+                }}
                 placeholder="ej: 7924856123:AAFOk9... (Token HTTP API)"
                 className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
               />
@@ -563,7 +652,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <input
                 type="text"
                 value={telegramChatId}
-                onChange={(e) => setTelegramChatId?.(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTelegramChatId?.(val);
+                  try {
+                    localStorage.setItem('american_clothes_telegram_chat_id_v1', val.trim());
+                  } catch {}
+                }}
+                onBlur={() => {
+                  try {
+                    localStorage.setItem('american_clothes_telegram_chat_id_v1', telegramChatId.trim());
+                  } catch {}
+                }}
                 placeholder="ej: 987654321 (solo números)"
                 className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
               />
@@ -573,17 +673,28 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* Botón de Prueba Telegram y Feedback */}
+          {/* Botones de Guardar, Prueba Telegram y Feedback */}
           <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-black/10">
-            <button
-              type="button"
-              disabled={telegramTestStatus.loading}
-              onClick={handleTestTelegramNotification}
-              className="px-4 py-2.5 bg-[#1A1A1A] hover:bg-[#333333] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-base">send</span>
-              {telegramTestStatus.loading ? 'Enviando...' : 'Probar Notificación en Telegram'}
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleSaveTelegramConfig}
+                className="px-4 py-2.5 bg-[#1A1A1A] hover:bg-[#333333] text-white font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">save</span>
+                Guardar Datos de Telegram
+              </button>
+
+              <button
+                type="button"
+                disabled={telegramTestStatus.loading}
+                onClick={handleTestTelegramNotification}
+                className="px-4 py-2.5 border border-black/20 bg-white hover:bg-[#F0EEE9] text-[#1A1A1A] font-label-caps text-xs font-bold uppercase tracking-[1.5px] transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-base text-[#0088cc]">send</span>
+                {telegramTestStatus.loading ? 'Enviando...' : 'Probar Notificación'}
+              </button>
+            </div>
 
             {telegramTestStatus.message && (
               <span

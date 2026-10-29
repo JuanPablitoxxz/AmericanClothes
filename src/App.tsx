@@ -6,6 +6,7 @@ import {
   createOrder,
   deleteProduct,
   fetchOrders,
+  fetchProducts,
   saveProduct,
   seedProductsIfEmpty,
   updateOrderStatus,
@@ -167,25 +168,27 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
     let isMounted = true;
 
     const loadStoreData = async () => {
       try {
+        if (!isSupabaseConfigured) return;
+
         const [remoteProducts, remoteOrders] = await Promise.all([
-          seedProductsIfEmpty(INITIAL_PRODUCTS),
+          fetchProducts(),
           fetchOrders(),
         ]);
 
         if (!isMounted) return;
-        setProducts(remoteProducts);
-        setOrders(remoteOrders.length > 0 ? remoteOrders : INITIAL_ORDERS);
+        if (remoteProducts && remoteProducts.length > 0) {
+          setProducts(remoteProducts);
+        }
+        setOrders(remoteOrders);
         setDataError(null);
       } catch (error) {
-        console.error('No fue posible cargar datos desde Supabase:', error);
+        console.error('Error al cargar datos desde Supabase:', error);
         if (isMounted) {
-          setDataError('No fue posible conectar con Supabase. Se están usando datos locales.');
+          setDataError('No fue posible sincronizar con Supabase. Usando datos locales.');
         }
       }
     };
@@ -264,7 +267,7 @@ export default function App() {
       }
 
       const nextProducts = products.map((p) => {
-        const cartMatch = cart.find((c) => c.product.id === p.id);
+        const cartMatch = cart.find((c) => c.product.id === p.id || (c.product.sku && c.product.sku === p.sku));
         if (!cartMatch) return p;
 
         const newStock = Math.max(0, p.stock - cartMatch.quantity);
@@ -276,10 +279,10 @@ export default function App() {
       });
 
       if (isSupabaseConfigured) {
-        await Promise.all(
+        await Promise.allSettled(
           nextProducts
-            .filter((product) => cart.some((item) => item.product.id === product.id))
-            .map((product) => updateProductStock(product.id, product.stock, product.status))
+            .filter((product) => cart.some((item) => item.product.id === product.id || item.product.sku === product.sku))
+            .map((product) => updateProductStock(product.id, product.stock, product.status, product.sku))
         );
       }
 
@@ -290,7 +293,7 @@ export default function App() {
       return newOrderId;
     } catch (error) {
       console.error('No fue posible registrar el pedido:', error);
-      setDataError('No fue posible registrar el pedido. Intenta de nuevo.');
+      setDataError('No fue posible registrar el pedido en Supabase.');
       return newOrderId;
     }
   };
@@ -302,7 +305,7 @@ export default function App() {
         const savedProduct = await saveProduct(productData);
         setProducts((prev) =>
           productData.id
-            ? prev.map((p) => (p.id === savedProduct.id ? savedProduct : p))
+            ? prev.map((p) => (p.id === savedProduct.id || (p.sku && p.sku === savedProduct.sku) ? savedProduct : p))
             : [savedProduct, ...prev]
         );
       } else if (productData.id) {
@@ -327,10 +330,11 @@ export default function App() {
 
   const handleDeleteProduct = async (productId: string) => {
     if (!window.confirm('¿Está seguro de eliminar esta pieza del catálogo?')) return;
+    const target = products.find((p) => p.id === productId);
 
     try {
       if (isSupabaseConfigured) {
-        await deleteProduct(productId);
+        await deleteProduct(productId, target?.sku);
       }
 
       setProducts((prev) => prev.filter((p) => p.id !== productId));
@@ -354,8 +358,10 @@ export default function App() {
 
     try {
       if (isSupabaseConfigured) {
-        const updatedProduct = await updateProductStatus(productId, nextStatus);
-        setProducts((prev) => prev.map((p) => (p.id === productId ? updatedProduct : p)));
+        const updatedProduct = await updateProductStatus(productId, nextStatus, currentProduct.sku);
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId || (p.sku && p.sku === currentProduct.sku) ? updatedProduct : p))
+        );
       } else {
         setProducts((prev) =>
           prev.map((p) => (p.id === productId ? { ...p, status: nextStatus } : p))

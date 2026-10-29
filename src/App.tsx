@@ -33,7 +33,7 @@ import {
 } from './lib/storeData';
 import { notifyAdminNewOrder } from './lib/whatsappNotification';
 import { notifyTelegramNewOrder } from './lib/telegramNotification';
-import { getVerifiedCurrentUser, logoutUser } from './lib/auth';
+import { getAllRegisteredAccounts, getVerifiedCurrentUser, logoutUser, StoredUserAccount } from './lib/auth';
 import { LiquidGoldShader } from './components/LiquidGoldShader';
 import { AuthModal, AuthView } from './components/auth/AuthModal';
 
@@ -55,6 +55,7 @@ import { AdminTopBar } from './components/admin/AdminTopBar';
 import { DashboardOverview } from './components/admin/DashboardOverview';
 import { ProductManagement } from './components/admin/ProductManagement';
 import { OrderManagement } from './components/admin/OrderManagement';
+import { UserManagement } from './components/admin/UserManagement';
 import { SettingsPanel } from './components/admin/SettingsPanel';
 import { ProductFormModal } from './components/admin/ProductFormModal';
 
@@ -201,6 +202,51 @@ export default function App() {
     return true;
   });
 
+  // Medios de Pago (Nequi, Daviplata, Llave Bre-B, QR)
+  const [nequiNumber, setNequiNumber] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).nequiNumber ?? '3224127814';
+    } catch {}
+    return '3224127814';
+  });
+
+  const [daviplataNumber, setDaviplataNumber] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).daviplataNumber ?? '3224127814';
+    } catch {}
+    return '3224127814';
+  });
+
+  const [breBKey, setBreBKey] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).breBKey ?? '3224127814';
+    } catch {}
+    return '3224127814';
+  });
+
+  const [paymentQrImage, setPaymentQrImage] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (s) return JSON.parse(s).paymentQrImage ?? '';
+    } catch {}
+    return '';
+  });
+
+  // Usuarios registrados en la plataforma
+  const [registeredUsers, setRegisteredUsers] = useState<StoredUserAccount[]>([]);
+
+  const loadRegisteredUsers = async () => {
+    try {
+      const accounts = await getAllRegisteredAccounts();
+      setRegisteredUsers(accounts);
+    } catch (err) {
+      console.warn('Error al cargar cuentas de usuarios:', err);
+    }
+  };
+
   // 1. Verificar sesión autenticada y enlaces de recuperación de contraseña por correo
   useEffect(() => {
     let isMounted = true;
@@ -258,6 +304,10 @@ export default function App() {
         telegramBotToken,
         telegramChatId,
         autoNotifyTelegram,
+        nequiNumber,
+        daviplataNumber,
+        breBKey,
+        paymentQrImage,
       })
     );
   }, [
@@ -271,6 +321,10 @@ export default function App() {
     telegramBotToken,
     telegramChatId,
     autoNotifyTelegram,
+    nequiNumber,
+    daviplataNumber,
+    breBKey,
+    paymentQrImage,
   ]);
 
   const handleSyncDatabase = async () => {
@@ -294,7 +348,12 @@ export default function App() {
         if (remoteSettings.telegramBotToken !== undefined) setTelegramBotToken(remoteSettings.telegramBotToken);
         if (remoteSettings.telegramChatId !== undefined) setTelegramChatId(remoteSettings.telegramChatId);
         if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
+        if (remoteSettings.nequiNumber !== undefined) setNequiNumber(remoteSettings.nequiNumber);
+        if (remoteSettings.daviplataNumber !== undefined) setDaviplataNumber(remoteSettings.daviplataNumber);
+        if (remoteSettings.breBKey !== undefined) setBreBKey(remoteSettings.breBKey);
+        if (remoteSettings.paymentQrImage !== undefined) setPaymentQrImage(remoteSettings.paymentQrImage);
       }
+      await loadRegisteredUsers();
       setDataError(null);
     } catch (error) {
       console.error('Error al sincronizar desde Supabase:', error);
@@ -336,7 +395,13 @@ export default function App() {
           if (remoteSettings.telegramBotToken !== undefined) setTelegramBotToken(remoteSettings.telegramBotToken);
           if (remoteSettings.telegramChatId !== undefined) setTelegramChatId(remoteSettings.telegramChatId);
           if (remoteSettings.autoNotifyTelegram !== undefined) setAutoNotifyTelegram(remoteSettings.autoNotifyTelegram);
+          if (remoteSettings.nequiNumber !== undefined) setNequiNumber(remoteSettings.nequiNumber);
+          if (remoteSettings.daviplataNumber !== undefined) setDaviplataNumber(remoteSettings.daviplataNumber);
+          if (remoteSettings.breBKey !== undefined) setBreBKey(remoteSettings.breBKey);
+          if (remoteSettings.paymentQrImage !== undefined) setPaymentQrImage(remoteSettings.paymentQrImage);
         }
+
+        await loadRegisteredUsers();
 
         setDataError(null);
       } catch (error) {
@@ -1047,6 +1112,10 @@ export default function App() {
             onCheckout={handleCheckout}
             onStockLimitNotice={showStockNotice}
             whatsappNumber={whatsappNumber}
+            nequiNumber={nequiNumber}
+            daviplataNumber={daviplataNumber}
+            breBKey={breBKey}
+            paymentQrImage={paymentQrImage}
           />
         </div>
       ) : (
@@ -1062,6 +1131,7 @@ export default function App() {
             lowStockCount={lowStockCount}
             criticalStockCount={criticalStockCount}
             ordersCount={orders.length}
+            usersCount={registeredUsers.length}
           />
 
           {/* Right Admin Workspace Column */}
@@ -1115,6 +1185,14 @@ export default function App() {
                 />
               )}
 
+              {adminTab === 'users' && (
+                <UserManagement
+                  users={registeredUsers}
+                  currentUser={currentUser}
+                  onRefreshUsers={loadRegisteredUsers}
+                />
+              )}
+
               {adminTab === 'settings' && (
                 <SettingsPanel
                   shaderOpacity={shaderOpacity}
@@ -1137,6 +1215,14 @@ export default function App() {
                   setTelegramChatId={setTelegramChatId}
                   autoNotifyTelegram={autoNotifyTelegram}
                   setAutoNotifyTelegram={setAutoNotifyTelegram}
+                  nequiNumber={nequiNumber}
+                  setNequiNumber={setNequiNumber}
+                  daviplataNumber={daviplataNumber}
+                  setDaviplataNumber={setDaviplataNumber}
+                  breBKey={breBKey}
+                  setBreBKey={setBreBKey}
+                  paymentQrImage={paymentQrImage}
+                  setPaymentQrImage={setPaymentQrImage}
                   isSupabaseConfigured={isSupabaseConfigured}
                   productsCount={products.length}
                   ordersCount={orders.length}

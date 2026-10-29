@@ -15,6 +15,10 @@ interface ShoppingBagDrawerProps {
   onCheckout: (customerInfo: { name: string; email: string; address: string; phone?: string }) => Promise<string> | string | void;
   onStockLimitNotice?: (message: string) => void;
   whatsappNumber?: string;
+  nequiNumber?: string;
+  daviplataNumber?: string;
+  breBKey?: string;
+  paymentQrImage?: string;
 }
 
 export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
@@ -28,6 +32,10 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   onCheckout,
   onStockLimitNotice,
   whatsappNumber = '573001234567',
+  nequiNumber = '3224127814',
+  daviplataNumber = '3224127814',
+  breBKey = '3224127814',
+  paymentQrImage = '',
 }) => {
   if (!isOpen) return null;
 
@@ -41,6 +49,15 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedField(label);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {}
+  };
   const [confirmedOrder, setConfirmedOrder] = useState<{
     id: string;
     name: string;
@@ -320,8 +337,117 @@ export const ShoppingBagDrawer: React.FC<ShoppingBagDrawerProps> = ({
                 rows={3}
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
+                placeholder="ej: Cra 15 # 85-30, Apto 402, Bogotá D.C."
                 className="w-full bg-[#EFECE7] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"
               />
+            </div>
+
+            {/* SECCIÓN OFICIAL DE PAGO: QR DE LLAVE BREVE, NEQUI, DAVIPLATA Y BRE-B */}
+            <div className="p-4 bg-[#EFECE7] border-2 border-black/15 space-y-3.5">
+              <div className="flex items-center justify-between border-b border-black/10 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base text-[#1A1A1A]">payments</span>
+                  <span className="font-label-caps text-[11px] font-bold tracking-[1.5px] uppercase text-[#1A1A1A]">
+                    Transferencia Inmediata
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 border border-emerald-300">
+                  Sin Comisiones
+                </span>
+              </div>
+
+              {/* QR de Llave Breve si está subido desde el panel */}
+              {paymentQrImage ? (
+                <div className="bg-white p-3 border border-black/10 flex flex-col items-center justify-center text-center space-y-2">
+                  <span className="font-label-caps text-[9px] tracking-[1px] text-[#444] uppercase font-bold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm text-[#D4AF37]">qr_code_2</span>
+                    Escanea con Llave Breve / Bre-B o tu App Bancaria
+                  </span>
+                  <div className="bg-white p-1 border-2 border-black/10 shadow-sm inline-block">
+                    <img
+                      src={paymentQrImage}
+                      alt="Código QR Llave Breve"
+                      className="w-40 h-40 object-contain mx-auto"
+                    />
+                  </div>
+                  <span className="text-[10px] text-[#666] font-sans-body leading-tight">
+                    Acepta Nequi, Daviplata, Bancolombia, Dale y cualquier app bancaria colombiana.
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-white/60 p-3 border border-dashed border-black/20 flex flex-col items-center justify-center text-center space-y-1">
+                  <span className="material-symbols-outlined text-2xl text-[#888]">qr_code_scanner</span>
+                  <span className="font-label-caps text-[10px] tracking-[1px] text-[#666] font-bold uppercase">
+                    Transferencia por Llave Breve o Cuenta
+                  </span>
+                  <span className="text-[10px] text-[#777]">
+                    Copia cualquiera de los números oficiales abajo para transferir.
+                  </span>
+                </div>
+              )}
+
+              {/* Números de cuenta y llave Bre-B con botón de copiar */}
+              <div className="space-y-2">
+                {/* Nequi */}
+                <div className="flex items-center justify-between p-2.5 bg-white border border-black/10 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#3B1254] flex-shrink-0"></span>
+                    <div>
+                      <span className="font-bold text-[#1A1A1A] block text-[11px] font-label-caps">Nequi</span>
+                      <span className="font-mono text-xs text-[#222] font-bold tracking-wider">
+                        {nequiNumber || '322 412 7814'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(nequiNumber || '3224127814', 'nequi')}
+                    className="px-2.5 py-1 bg-[#1A1A1A] hover:bg-[#333] text-[#F9F8F6] font-label-caps text-[9px] font-bold uppercase tracking-[1px] transition-colors"
+                  >
+                    {copiedField === 'nequi' ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+
+                {/* Daviplata */}
+                <div className="flex items-center justify-between p-2.5 bg-white border border-black/10 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ED1C24] flex-shrink-0"></span>
+                    <div>
+                      <span className="font-bold text-[#1A1A1A] block text-[11px] font-label-caps">Daviplata</span>
+                      <span className="font-mono text-xs text-[#222] font-bold tracking-wider">
+                        {daviplataNumber || '322 412 7814'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(daviplataNumber || '3224127814', 'daviplata')}
+                    className="px-2.5 py-1 bg-[#1A1A1A] hover:bg-[#333] text-[#F9F8F6] font-label-caps text-[9px] font-bold uppercase tracking-[1px] transition-colors"
+                  >
+                    {copiedField === 'daviplata' ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+
+                {/* Llave Bre-B */}
+                <div className="flex items-center justify-between p-2.5 bg-white border border-black/10 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#D4AF37] flex-shrink-0"></span>
+                    <div>
+                      <span className="font-bold text-[#1A1A1A] block text-[11px] font-label-caps">Llave Bre-B</span>
+                      <span className="font-mono text-xs text-[#222] font-bold tracking-wider">
+                        {breBKey || '3224127814'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(breBKey || '3224127814', 'breb')}
+                    className="px-2.5 py-1 bg-[#1A1A1A] hover:bg-[#333] text-[#F9F8F6] font-label-caps text-[9px] font-bold uppercase tracking-[1px] transition-colors"
+                  >
+                    {copiedField === 'breb' ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="p-3 bg-[#EFECE7] border border-black/10 text-xs space-y-1">

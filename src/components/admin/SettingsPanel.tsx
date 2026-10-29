@@ -25,6 +25,14 @@ interface SettingsPanelProps {
   setTelegramChatId?: (val: string) => void;
   autoNotifyTelegram?: boolean;
   setAutoNotifyTelegram?: (val: boolean) => void;
+  nequiNumber?: string;
+  setNequiNumber?: (val: string) => void;
+  daviplataNumber?: string;
+  setDaviplataNumber?: (val: string) => void;
+  breBKey?: string;
+  setBreBKey?: (val: string) => void;
+  paymentQrImage?: string;
+  setPaymentQrImage?: (val: string) => void;
   isSupabaseConfigured: boolean;
   productsCount: number;
   ordersCount: number;
@@ -52,12 +60,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setTelegramChatId,
   autoNotifyTelegram = true,
   setAutoNotifyTelegram,
+  nequiNumber = '3224127814',
+  setNequiNumber,
+  daviplataNumber = '3224127814',
+  setDaviplataNumber,
+  breBKey = '3224127814',
+  setBreBKey,
+  paymentQrImage = '',
+  setPaymentQrImage,
   isSupabaseConfigured,
   productsCount,
   ordersCount,
   onSyncDatabase,
 }) => {
   const [savedMessage, setSavedMessage] = useState(false);
+  const [qrUploadMode, setQrUploadMode] = useState<'upload' | 'url'>('upload');
   const [testStatus, setTestStatus] = useState<{
     loading: boolean;
     message: string | null;
@@ -78,6 +95,23 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     isError: false,
   });
 
+  const handleQrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) {
+        alert('La imagen del QR de pago no debe exceder 4 MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setPaymentQrImage?.(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSupabaseConfigured) {
@@ -93,6 +127,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           telegramBotToken,
           telegramChatId,
           autoNotifyTelegram,
+          nequiNumber,
+          daviplataNumber,
+          breBKey,
+          paymentQrImage,
         });
       } catch (err) {
         console.error('Error al guardar ajustes en Supabase:', err);
@@ -318,6 +356,156 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none"
               />
             </div>
+          </div>
+        </div>
+
+        {/* SECCIÓN DEDICADA: MEDIOS DE PAGO Y TRANSFERENCIAS (NEQUI, DAVIPLATA, BRE-B, QR) */}
+        <div className="bg-[#EFECE7] border border-black/10 p-5 sm:p-6 space-y-5 shadow-sm">
+          <div className="border-b border-black/10 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#D4AF37] text-2xl">
+                account_balance_wallet
+              </span>
+              <h3 className="font-serif-display text-lg sm:text-xl text-[#1A1A1A] font-normal">
+                Medios de Pago en Tienda (Nequi, Daviplata, Llave Bre-B & QR)
+              </h3>
+            </div>
+            <p className="text-[11px] text-[#555555] mt-1">
+              Estos datos bancarios y el código QR de Llave Breve se mostrarán a los clientes en la bolsa de compras en el paso <strong>"Confirmar y Pagar"</strong> para que puedan transferir directamente.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Número Nequi
+              </label>
+              <input
+                type="text"
+                value={nequiNumber}
+                onChange={(e) => setNequiNumber?.(e.target.value)}
+                placeholder="ej: 322 412 7814"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
+              />
+              <span className="text-[10px] text-[#777777] mt-1 block">
+                Visible para transferencias por Nequi.
+              </span>
+            </div>
+
+            <div>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Número Daviplata
+              </label>
+              <input
+                type="text"
+                value={daviplataNumber}
+                onChange={(e) => setDaviplataNumber?.(e.target.value)}
+                placeholder="ej: 322 412 7814"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
+              />
+              <span className="text-[10px] text-[#777777] mt-1 block">
+                Visible para transferencias por Daviplata.
+              </span>
+            </div>
+
+            <div>
+              <label className="font-label-caps text-[10px] text-[#888888] tracking-[2px] block mb-1">
+                Llave Bre-B / Llave Breve
+              </label>
+              <input
+                type="text"
+                value={breBKey}
+                onChange={(e) => setBreBKey?.(e.target.value)}
+                placeholder="ej: 3224127814 o identificador"
+                className="w-full bg-[#F9F8F6] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
+              />
+              <span className="text-[10px] text-[#777777] mt-1 block">
+                Llave para transferencias interbancarias Bre-B.
+              </span>
+            </div>
+          </div>
+
+          {/* Subida y actualización del Código QR de Llave Breve */}
+          <div className="bg-[#F9F8F6] border border-black/10 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/10 pb-2">
+              <label className="font-label-caps text-[10px] text-[#1A1A1A] tracking-[1.5px] font-bold block flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base text-[#D4AF37]">qr_code_2</span>
+                Código QR de Llave Breve / Bre-B (Para Escanear y Pagar)
+              </label>
+
+              <div className="flex items-center gap-1 bg-[#EFECE7] p-0.5 border border-black/10 text-[9px] font-label-caps">
+                <button
+                  type="button"
+                  onClick={() => setQrUploadMode('upload')}
+                  className={`px-2.5 py-1 ${
+                    qrUploadMode === 'upload' ? 'bg-[#1A1A1A] text-[#F9F8F6]' : 'text-[#555]'
+                  }`}
+                >
+                  Subir Archivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrUploadMode('url')}
+                  className={`px-2.5 py-1 ${
+                    qrUploadMode === 'url' ? 'bg-[#1A1A1A] text-[#F9F8F6]' : 'text-[#555]'
+                  }`}
+                >
+                  URL Externa
+                </button>
+              </div>
+            </div>
+
+            {qrUploadMode === 'upload' ? (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleQrFileUpload}
+                  className="w-full text-xs text-[#1A1A1A] file:mr-3 file:py-2 file:px-4 file:border-0 file:text-[10px] file:font-label-caps file:font-bold file:tracking-[1px] file:bg-[#1A1A1A] file:text-[#F9F8F6] hover:file:bg-[#333] cursor-pointer"
+                />
+                <span className="text-[10px] text-[#777] mt-1 block">
+                  Selecciona una captura o foto de tu código QR de Llave Breve o Nequi/Daviplata.
+                </span>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="url"
+                  placeholder="https://ejemplo.com/tu-qr-llave-breve.jpg"
+                  value={paymentQrImage}
+                  onChange={(e) => setPaymentQrImage?.(e.target.value)}
+                  className="w-full bg-[#EFECE7] border border-black/10 p-2.5 text-xs text-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] outline-none font-mono"
+                />
+              </div>
+            )}
+
+            {paymentQrImage && (
+              <div className="flex items-center justify-between p-3 bg-white border border-black/10 mt-2">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={paymentQrImage}
+                    alt="QR de Pago Llave Breve"
+                    className="w-16 h-16 object-contain border border-black/10 bg-white p-1"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-[#1A1A1A] block">
+                      Código QR Configurado
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-mono">
+                      ✓ Se mostrará en la pasarela a los clientes
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentQrImage?.('')}
+                  className="px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-50 font-label-caps tracking-[1px] border border-red-200 transition-colors"
+                >
+                  Quitar QR
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

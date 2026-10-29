@@ -414,6 +414,10 @@ export interface StoreSettings {
   telegramBotToken?: string;
   telegramChatId?: string;
   autoNotifyTelegram?: boolean;
+  nequiNumber?: string;
+  daviplataNumber?: string;
+  breBKey?: string;
+  paymentQrImage?: string;
 }
 
 const SETTINGS_RECORD_ID = '__SYS_SETTINGS__';
@@ -461,6 +465,10 @@ export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
       telegramBotToken: fallbackJson?.telegramBotToken || '',
       telegramChatId: fallbackJson?.telegramChatId || '',
       autoNotifyTelegram: fallbackJson?.autoNotifyTelegram ?? true,
+      nequiNumber: String(fallbackJson?.nequiNumber ?? '3224127814'),
+      daviplataNumber: String(fallbackJson?.daviplataNumber ?? '3224127814'),
+      breBKey: String(fallbackJson?.breBKey ?? '3224127814'),
+      paymentQrImage: String(fallbackJson?.paymentQrImage ?? ''),
     };
   }
 
@@ -479,6 +487,10 @@ export const fetchCloudSettings = async (): Promise<StoreSettings | null> => {
       telegramBotToken: String(fallbackJson.telegramBotToken ?? ''),
       telegramChatId: String(fallbackJson.telegramChatId ?? ''),
       autoNotifyTelegram: fallbackJson.autoNotifyTelegram ?? true,
+      nequiNumber: String(fallbackJson.nequiNumber ?? '3224127814'),
+      daviplataNumber: String(fallbackJson.daviplataNumber ?? '3224127814'),
+      breBKey: String(fallbackJson.breBKey ?? '3224127814'),
+      paymentQrImage: String(fallbackJson.paymentQrImage ?? ''),
     };
   }
 
@@ -498,6 +510,10 @@ export const saveCloudSettings = async (settings: StoreSettings): Promise<void> 
     telegramBotToken: assertSafeString(settings.telegramBotToken || '', 'Telegram Bot Token'),
     telegramChatId: assertSafeString(settings.telegramChatId || '', 'Telegram Chat ID'),
     autoNotifyTelegram: settings.autoNotifyTelegram ?? true,
+    nequiNumber: assertSafeString(settings.nequiNumber || '3224127814', 'Nequi'),
+    daviplataNumber: assertSafeString(settings.daviplataNumber || '3224127814', 'Daviplata'),
+    breBKey: assertSafeString(settings.breBKey || '3224127814', 'Llave Bre-B'),
+    paymentQrImage: typeof settings.paymentQrImage === 'string' ? settings.paymentQrImage : '',
   };
 
   // 1. Guardar en store_settings

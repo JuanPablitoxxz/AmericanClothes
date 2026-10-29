@@ -47,7 +47,7 @@ export interface CartItem {
   selectedSize: string;
 }
 
-export type AdminTab = 'dashboard' | 'products' | 'orders' | 'settings';
+export type AdminTab = 'dashboard' | 'products' | 'orders' | 'users' | 'settings';
 
 export type AppMode = 'store' | 'admin';
 

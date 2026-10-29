@@ -794,3 +794,138 @@ export const logoutUser = async (): Promise<void> => {
     console.error('Error al cerrar sesión:', e);
   }
 };
+
+/**
+ * Obtiene la lista completa de usuarios registrados directamente desde Supabase.
+ */
+export const getAllRegisteredAccounts = async (): Promise<StoredUserAccount[]> => {
+  return await ensureSeededAccounts();
+};
+
+/**
+ * Permite al Administrador cambiar la contraseña de cualquier usuario o la suya propia,
+ * recalculando el hash PBKDF2-SHA256 y sincronizándolo en Supabase.
+ */
+export const adminChangePassword = async (
+  targetEmail: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string; message?: string }> => {
+  const cleanEmail = targetEmail.toLowerCase().trim();
+  if (!cleanEmail) {
+    return { success: false, error: 'Correo de usuario no válido.' };
+  }
+
+  const passVal = validatePasswordStrength(newPassword);
+  if (!passVal.valid) {
+    return { success: false, error: passVal.error };
+  }
+
+  const accounts = await ensureSeededAccounts();
+  const targetIndex = accounts.findIndex((a) => a.email.toLowerCase() === cleanEmail);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'No se encontró el usuario en la base de datos.' };
+  }
+
+  const newSalt = generateSalt();
+  const newPasswordHash = await hashPasswordPBKDF2(newPassword, newSalt);
+
+  const updatedAccount: StoredUserAccount = {
+    ...accounts[targetIndex],
+    salt: newSalt,
+    passwordHash: newPasswordHash,
+  };
+
+  accounts[targetIndex] = updatedAccount;
+
+  // Actualizar en Supabase PostgreSQL
+  await upsertSupabaseAccount(updatedAccount);
+  saveAccountsToLocalCache(accounts);
+  clearAuthRateLimit(cleanEmail);
+
+  // Si la cuenta tiene sesión activa en Supabase Auth y es el usuario actual, actualizar también
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email?.toLowerCase() === cleanEmail) {
+        await supabase.auth.updateUser({ password: newPassword });
+      }
+    } catch {
+      // Ignorar fallo secundario en Auth client si no coincide la sesión
+    }
+  }
+
+  return {
+    success: true,
+    message: `La contraseña de "${updatedAccount.name}" (${cleanEmail}) ha sido actualizada exitosamente.`,
+  };
+};
+
+/**
+ * Permite al Administrador cambiar el rol de un usuario (admin / client).
+ */
+export const adminUpdateUserRole = async (
+  targetEmail: string,
+  newRole: UserRole
+): Promise<{ success: boolean; error?: string; message?: string }> => {
+  const cleanEmail = targetEmail.toLowerCase().trim();
+  const accounts = await ensureSeededAccounts();
+  const targetIndex = accounts.findIndex((a) => a.email.toLowerCase() === cleanEmail);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'Usuario no encontrado.' };
+  }
+
+  if (cleanEmail === 'admin@americanclothes.com' && newRole !== 'admin') {
+    return { success: false, error: 'No es posible quitar el rol de administrador a la cuenta principal.' };
+  }
+
+  accounts[targetIndex].role = newRole;
+  await upsertSupabaseAccount(accounts[targetIndex]);
+  saveAccountsToLocalCache(accounts);
+
+  return {
+    success: true,
+    message: `Rol de "${accounts[targetIndex].name}" cambiado a ${newRole.toUpperCase()}.`,
+  };
+};
+
+/**
+ * Permite al Administrador eliminar un usuario registrado.
+ */
+export const adminDeleteAccount = async (
+  targetEmail: string
+): Promise<{ success: boolean; error?: string; message?: string }> => {
+  const cleanEmail = targetEmail.toLowerCase().trim();
+
+  if (cleanEmail === 'admin@americanclothes.com') {
+    return { success: false, error: 'No se puede eliminar la cuenta principal de administración.' };
+  }
+
+  const accounts = await ensureSeededAccounts();
+  const targetAccount = accounts.find((a) => a.email.toLowerCase() === cleanEmail);
+
+  if (!targetAccount) {
+    return { success: false, error: 'Usuario no encontrado.' };
+  }
+
+  // 1. Eliminar de public.app_users
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase.from('app_users').delete().eq('email', cleanEmail);
+    } catch {}
+
+    // 2. Eliminar del registro fallback en orders
+    try {
+      await supabase.from('orders').delete().eq('id', `${SYS_USER_PREFIX}${cleanEmail}`);
+    } catch {}
+  }
+
+  const nextAccounts = accounts.filter((a) => a.email.toLowerCase() !== cleanEmail);
+  saveAccountsToLocalCache(nextAccounts);
+
+  return {
+    success: true,
+    message: `Usuario ${cleanEmail} eliminado correctamente de la base de datos.`,
+  };
+};

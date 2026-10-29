@@ -10,6 +10,7 @@ interface AdminSidebarProps {
   lowStockCount: number;
   criticalStockCount?: number;
   ordersCount: number;
+  usersCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -21,20 +22,22 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   lowStockCount,
   criticalStockCount = 0,
   ordersCount,
+  usersCount = 0,
 }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const totalStockAlerts = criticalStockCount + lowStockCount;
 
   const navItems: { id: AdminTab; label: string; icon: string; badge?: number; isCritical?: boolean }[] = [
-    { id: 'dashboard', label: 'Panel Principal', icon: 'dashboard' },
+    { id: 'dashboard', label: 'Panel', icon: 'dashboard' },
     {
       id: 'products',
-      label: 'Productos',
+      label: 'Prendas',
       icon: 'inventory_2',
       badge: totalStockAlerts > 0 ? totalStockAlerts : undefined,
       isCritical: criticalStockCount > 0,
     },
     { id: 'orders', label: 'Pedidos', icon: 'shopping_cart', badge: ordersCount > 0 ? ordersCount : undefined },
+    { id: 'users', label: 'Usuarios', icon: 'group', badge: usersCount > 0 ? usersCount : undefined },
     { id: 'settings', label: 'Ajustes', icon: 'settings' },
   ];
 
@@ -89,8 +92,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           </div>
         </div>
 
-        {/* Barra de navegación rápida de los 4 apartados en móvil/tablet */}
-        <div className="grid grid-cols-4 border-t border-white/10 bg-[#141414]">
+        {/* Barra de navegación rápida de los apartados en móvil/tablet */}
+        <div className="grid grid-cols-5 border-t border-white/10 bg-[#141414]">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
